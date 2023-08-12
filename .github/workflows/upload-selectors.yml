@@ -1,0 +1,30 @@
+name: 🗃 Upload selectors
+
+on:
+  workflow_dispatch:
+
+jobs:
+  storage-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          
+      - name: '🔨 Install Foundry'
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: '💾 Foundry compilation cache'
+        uses: actions/cache@v3
+        with:
+          path: |
+            cache
+            out
+          key: ${{ github.base_ref || github.ref_name }}-foundry
+          
+      - name: '🗃️ Upload contracts selectors'
+        run: forge selectors up --all
+            

@@ -1,66 +1,50 @@
-## Foundry
+# swap-pool 😎
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+A modular Solidity-based solution handling asset swaps within the [Frak](https://frak.id/) ecosystem. Streamlined, secure, and designed with developers in mind.
 
-Foundry consists of:
+## Table of Contents 📚
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+- [Prerequisites](#prerequisites) 🔧
+- [Installation](#installation) 🛠️
+- [How It Works](#how-it-works) 🧠
+- [Contract Structure](#contract-structure) 📜
+- [Credits & Acknowledgments](#credits--acknowledgments) 👏
+- [Features](#features) 🌟
+- [Authors](#authors) 🖋️
+- [License](#license) ⚖️
 
-## Documentation
+## Prerequisites 🔧
 
-https://book.getfoundry.sh/
+To compile and test the contracts, we utilize [foundry](https://github.com/foundry-rs/foundry). Make sure to familiarize yourself with its environment and setup.
 
-## Usage
+## Installation 🛠️
 
-### Build
+> **Note**: Detailed installation steps will be provided soon.
 
-```shell
-$ forge build
-```
+## How It Works 🧠
 
-### Test
+> **Note**: Detailed information about how the "swap-pool" mechanism works will be provided soon.
 
-```shell
-$ forge test
-```
+## Contract Structure 📜
 
-### Format
+> **Note**: An in-depth overview of the contracts' structure and their relationships will be provided soon.
 
-```shell
-$ forge fmt
-```
+## Credits & Acknowledgments 👏
 
-### Gas Snapshots
+We owe a debt of gratitude to the foundational work done by [Philogy](https://github.com/Philogy/singleton-swapper). Our implementation, while unique, has been greatly inspired by or derives from their stellar work on the singleton-swapper repository.
 
-```shell
-$ forge snapshot
-```
+## Features 🌟
 
-### Anvil
+- **Pool Per Contract Mechanism**: Enhanced flexibility by allowing a dedicated pool for each contract.
+- **In-Memory Accounting**: Optimized performance by handling account balances and transactions in memory.
+- **EIP-2612 Permit Signature Support**: Integrated support for EIP-2612 permit signatures, enabling better user experience and security.
 
-```shell
-$ anvil
-```
+## Authors 🖋️
 
-### Deploy
+- **KONFeature** - [Profile](https://github.com/KONFeature) - Main Author and Developer.
+- **Philogy** - [Profile](https://github.com/Philogy/singleton-swapper) - Credits for foundational work.
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+## License ⚖️
 
-### Cast
+This project is licensed under the AGPL-3.0-only License. Portions of the codebase are derived or inspired by projects under their respective licenses. Always ensure compatibility when integrating or modifying the code.
 
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
