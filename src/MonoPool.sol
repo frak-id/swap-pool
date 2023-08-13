@@ -11,12 +11,12 @@ import { Ops } from "./Ops.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
 
-/// @title MonoTokenPool
+/// @title MonoPool
 /// @notice Same as the original MegaTokenPool, but with a single ERC_20 base token (useful for project that want a pool
 /// for their internal swap)
 /// @author KONFeature <https://github.com/KONFeature>
 /// @author Inspired from (https://github.com/Philogy/singleton-swapper/blob/main/src/MegaPool.sol) by Phylogy
-contract MonoTokenPool is ReentrancyGuard {
+contract MonoPool is ReentrancyGuard {
     using SafeTransferLib for address;
     using SafeCastLib for uint256;
     using DecoderLib for uint256;
@@ -53,7 +53,7 @@ contract MonoTokenPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @dev The fee that will be taken from each swaps
-    uint256 public immutable FEE_BPS;
+    uint256 private immutable FEE_BPS;
 
     /// @dev The token's we will use for the pool
     address private immutable TOKEN_0;
@@ -77,7 +77,7 @@ contract MonoTokenPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     error InvalidOp(uint256 op);
-    error LeftoverDelta();
+    error LeftOverDelta();
     error InvalidGive();
     error NegativeAmount();
     error NegativeReceive();
@@ -160,7 +160,7 @@ contract MonoTokenPool is ReentrancyGuard {
         }
 
         // If there are any leftover deltas, revert
-        if (accounter.totalNonZero != 0) revert LeftoverDelta();
+        if (accounter.totalNonZero != 0) revert LeftOverDelta();
     }
 
     /* -------------------------------------------------------------------------- */
@@ -362,5 +362,34 @@ contract MonoTokenPool is ReentrancyGuard {
             tokenState = token1State;
         }
         return (ptr, token, tokenState);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                           External view method's                           */
+    /* -------------------------------------------------------------------------- */
+
+    /// @notice Get the current tokens
+    function getTokens() external view returns (address token0, address token1) {
+        return (TOKEN_0, TOKEN_1);
+    }
+
+    /// @notice Get the current pool
+    /// @return totalLiquidity
+    /// @return reserve0
+    /// @return reserve1
+    function getPoolState() external view returns (uint256, uint256, uint256) {
+        return (pool.totalLiquidity, token0State.totalReserves, token1State.totalReserves);
+    }
+
+    /// @notice Get the current token states
+    /// @return totalReserves0
+    /// @return totalReserves1
+    function getReserves() external view returns (uint256, uint256) {
+        return (token0State.totalReserves, token1State.totalReserves);
+    }
+
+    /// @notice Get the current fees
+    function getFees() external view returns (uint256 bps, uint256 protocolFee) {
+        return (FEE_BPS, protocolFee);
     }
 }
