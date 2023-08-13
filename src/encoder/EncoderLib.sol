@@ -5,7 +5,6 @@ import { Ops } from "../Ops.sol";
 
 /// @title EncoderLib
 /// @notice Library for encoding operations
-/// @author philogy <https://github.com/philogy>
 /// @author KONFeature <https://github.com/KONFeature>
 /// @author Modified from (hhttps://github.com/Philogy/singleton-swapper/blob/main/src/utils/EncoderLib.sol) by Philogy
 library EncoderLib {

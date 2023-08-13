@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 /// @title DecoderLib
 /// @notice A library for decoding data inside a programm
-/// @author philogy <https://github.com/philogy>
 /// @author KONFeature <https://github.com/KONFeature>
 /// @author Inspired by (https://github.com/Philogy/singleton-swapper/blob/main/src/MegaPool.sol) by Philogy
 library DecoderLib {

@@ -98,9 +98,14 @@ Each operation is uniquely identified by a combination of its type and possible 
 ```ml
 .
 ├── Ops.sol               - Contains the list of all available operations (Ops).
-└── encoder
-    ├── DecoderLib.sol    - Helps decode data for each operation.
-    └── EncoderLib.sol    - Assists off-chain users. Not for on-chain use.
+├── encoder
+│   ├── DecoderLib.sol    - Helps decode data for each operation.
+│   └── EncoderLib.sol    - Assists off-chain users. Not for on-chain use.
+└── lib
+    ├── AccounterLib.sol  - Library with in-memory accounting logic.
+    ├── MemMappingLib.sol - Logic to build in-memory key-value mappings.
+    └── SwapLib.sol       - Contains computations related to swap operations.
+
 ```
 
 Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.
