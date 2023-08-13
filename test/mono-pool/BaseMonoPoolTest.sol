@@ -26,6 +26,7 @@ abstract contract BaseMonoPoolTest is Test {
 
     /// @dev The swap user
     address internal swapUser;
+    uint256 internal swapUserPrivKey;
 
     /// @dev base bps to use (5%)
     uint256 internal bps = 50;
@@ -38,7 +39,7 @@ abstract contract BaseMonoPoolTest is Test {
         // Create our users
         liquidityProvider = _newUser("liquidityProvider");
         feeReceiver = _newUser("feeReceiver");
-        swapUser = _newUser("swapUser");
+        (swapUser, swapUserPrivKey) = _newUserWithPrivKey("swapUser");
 
         // Create a few tokens
         token0 = _newToken("token0");
@@ -160,6 +161,12 @@ abstract contract BaseMonoPoolTest is Test {
 
     function _newUser(string memory label) internal returns (address addr) {
         addr = address(bytes20(keccak256(abi.encode(label))));
-        vm.label(swapUser, label);
+        vm.label(addr, label);
+    }
+
+    function _newUserWithPrivKey(string memory label) internal returns (address addr, uint256 privKey) {
+        privKey = uint256(keccak256(abi.encode(label)));
+        addr = vm.addr(privKey);
+        vm.label(addr, label);
     }
 }

@@ -7,6 +7,7 @@ import { Pool } from "./libs/PoolLib.sol";
 import { Accounter } from "./libs/AccounterLib.sol";
 import { BPS } from "./libs/SwapLib.sol";
 import { Ops } from "./Ops.sol";
+import { ERC20 } from "solady/tokens/ERC20.sol";
 
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
@@ -178,6 +179,8 @@ contract MonoPool is ReentrancyGuard {
             ptr = _sendAll(accounter, ptr, op);
         } else if (mop == Ops.RECEIVE_ALL) {
             ptr = _receiveAll(accounter, ptr, op);
+        } else if (mop == Ops.PERMIT_WITHDRAW_VIA_SIG) {
+            ptr = _permitViaSig(ptr);
         } else if (mop == Ops.ADD_LIQ) {
             ptr = _addLiquidity(accounter, ptr);
         } else if (mop == Ops.RM_LIQ) {
@@ -330,6 +333,34 @@ contract MonoPool is ReentrancyGuard {
 
         accounter.accountChange(TOKEN_0, delta0);
         accounter.accountChange(TOKEN_1, delta1);
+
+        return ptr;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                              Token helper op's                             */
+    /* -------------------------------------------------------------------------- */
+
+    /// @notice Perform the permit operation
+    function _permitViaSig(uint256 ptr) internal returns (uint256) {
+        address token;
+        TokenState storage tokenState;
+        uint256 amount;
+        uint256 deadline;
+        uint256 v;
+        bytes32 r;
+        bytes32 s;
+
+        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        (ptr, amount) = ptr.readUint(16);
+        (ptr, deadline) = ptr.readUint(6);
+        (ptr, v) = ptr.readUint(1);
+        (ptr, r) = ptr.readFullBytes();
+        (ptr, s) = ptr.readFullBytes();
+
+        // TODO: SOC another contract performing the permit and wrapping operations?
+        // TODO: Like a pre swap hook? Or a pre swap execution layer with dedicated commands?
+        ERC20(token).permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
 
         return ptr;
     }
