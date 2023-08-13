@@ -6,11 +6,18 @@ pragma solidity ^0.8.0;
 /// @author KONFeature <https://github.com/KONFeature>
 /// @author Inspired by (https://github.com/Philogy/singleton-swapper/blob/main/src/MegaPool.sol) by Philogy
 library DecoderLib {
-    /// @dev Reads a string from an encoded program: `self`
+    /// @dev Reads an address from an encoded program: `self`
     function readAddress(uint256 self) internal pure returns (uint256 newPtr, address addr) {
         uint256 rawVal;
         (newPtr, rawVal) = readUint(self, 20);
         addr = address(uint160(rawVal));
+    }
+
+    /// @dev Reads a boolean from an encoded program: `self`
+    function readBool(uint256 self) internal pure returns (uint256 newPtr, bool boolean) {
+        uint256 rawVal;
+        (newPtr, rawVal) = readUint(self, 1);
+        boolean = rawVal == 1;
     }
 
     /// @dev Reads an uint from an encoded program, `self`, encoded on `size` bytes

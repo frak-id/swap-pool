@@ -15,17 +15,17 @@ library Ops {
     /// @dev The mask used to extract the operation direction
     uint256 internal constant SWAP_DIR = 0x01;
 
-    /// @dev The Ops for the send token operation (from pool to user)
-    uint256 internal constant SEND = 0x10;
-
-    /// @dev The Ops for the receive token operation (from user to pool)
-    uint256 internal constant RECEIVE = 0x20;
-
     /// @dev The Ops for the send all token operation (from pool to user)
-    uint256 internal constant SEND_ALL = 0x30;
+    uint256 internal constant SEND_ALL = 0x10;
 
     /// @dev The Ops for the receive all token operation (from user to pool)
-    uint256 internal constant RECEIVE_ALL = 0x40;
+    uint256 internal constant RECEIVE_ALL = 0x20;
+
+    /// @dev The Ops for the send token operation (from pool to user)
+    uint256 internal constant SEND = 0x30;
+
+    /// @dev The Ops for the receive token operation (from user to pool)
+    uint256 internal constant RECEIVE = 0x40;
 
     /// @dev The Ops for the permit operation (using EIP-2612)
     uint256 internal constant PERMIT_WITHDRAW_VIA_SIG = 0x50;
@@ -39,8 +39,11 @@ library Ops {
     /// @dev The Ops for the claim fees operation from the operator
     uint256 internal constant CLAIM_ALL_FEES = 0x80;
 
-    /// @dev The minimum amount of token for the `ALL` operations
+    /// @dev The minimum amount of token for the `ALL` operations (0001)
     uint256 internal constant ALL_MIN_BOUND = 0x01;
-    /// @dev The maximum amount of token for the `ALL` operations
+    /// @dev The maximum amount of token for the `ALL` operations (0010)
     uint256 internal constant ALL_MAX_BOUND = 0x02;
+
+    /// @dev The mask used to handle native token (wrap or unwrap) (0100)
+    uint256 internal constant UNWRAP_NATIVE = 0x04;
 }

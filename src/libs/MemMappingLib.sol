@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 type MemMapping is uint256;
+
 type MapKVPair is uint256;
 
 using MemMappingLib for MemMapping global;

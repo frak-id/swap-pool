@@ -61,23 +61,23 @@ The system has a set of predefined operations that can be executed within the po
     - Used to extract the operation's direction.
     - `SWAP_DIR = 0x01`
 
-- **SEND Operation**: Enables the pool to send tokens to a user.
-  - **Operation Type**: `SEND = 0x10`
-
-- **RECEIVE Operation**: Allows a user to send tokens to the pool.
-  - **Operation Type**: `RECEIVE = 0x20`
-
 - **SEND_ALL Operation**: Enables the pool to send all tokens to a user.
-  - **Operation Type**: `SEND_ALL = 0x30`
+  - **Operation Type**: `SEND_ALL = 0x10`
   - **Bounds**:
     - Minimum: `ALL_MIN_BOUND = 0x01`
     - Maximum: `ALL_MAX_BOUND = 0x02`
 
 - **RECEIVE_ALL Operation**: Allows a user to send all their tokens to the pool.
-  - **Operation Type**: `RECEIVE_ALL = 0x40`
+  - **Operation Type**: `RECEIVE_ALL = 0x20`
   - **Bounds**:
     - Minimum: `ALL_MIN_BOUND = 0x01`
     - Maximum: `ALL_MAX_BOUND = 0x02`
+
+- **SEND Operation**: Enables the pool to send tokens to a user.
+  - **Operation Type**: `SEND = 0x30`
+
+- **RECEIVE Operation**: Allows a user to send tokens to the pool.
+  - **Operation Type**: `RECEIVE = 0x40`
 
 - **PERMIT_WITHDRAW_VIA_SIG Operation**: Enables operations using EIP-2612's permit functionality.
   - **Operation Type**: `PERMIT_WITHDRAW_VIA_SIG = 0x50`
