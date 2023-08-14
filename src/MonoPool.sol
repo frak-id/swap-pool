@@ -84,7 +84,7 @@ contract MonoPool is ReentrancyGuard {
     error NegativeAmount();
     error NegativeReceive();
     error AmountOutsideBounds();
-    error NotCurrentFeeReceiver();
+    error NotFeeReceiver();
 
     /* -------------------------------------------------------------------------- */
     /*                                 Constructor                                */
@@ -123,7 +123,7 @@ contract MonoPool is ReentrancyGuard {
     /// @param _feeReceiver The new fee receiver
     /// @param _swapFeePerThousands The new fee amount per thousand
     function updateFeeReceiver(address _feeReceiver, uint16 _swapFeePerThousands) external {
-        if (feeReceiver != msg.sender) revert NotCurrentFeeReceiver();
+        if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
         require(_swapFeePerThousands <= MAX_SWAP_FEE);
 
@@ -193,6 +193,8 @@ contract MonoPool is ReentrancyGuard {
             ptr = _addLiquidity(accounter, ptr);
         } else if (mop == Ops.RM_LIQ) {
             ptr = _removeLiquidity(accounter, ptr);
+        } else if (mop == Ops.CLAIM_ALL_FEES) {
+            ptr = _claimFees(accounter, ptr);
         } else {
             // Revert cause of an invalid OP
             revert InvalidOp(op);
@@ -209,23 +211,32 @@ contract MonoPool is ReentrancyGuard {
         bool zeroForOne = (op & Ops.SWAP_DIR) != 0;
         (ptr, amount) = ptr.readUint(16);
 
+        uint256 swapFee = 0;
+
+        // If we got a swap fee, deduce it from the amount to swap
+        if (swapFeePerThousands > 0) {
+            swapFee = (amount * swapFeePerThousands) / 1000;
+            // Decrease the amount of the fees we will take
+            amount = amount - swapFee;
+
+            // Then register the changes (depending on the direction, add the swap fees)
+            if (zeroForOne) {
+                accounter.accountChange(TOKEN_0, swapFee.toInt256());
+                token0State.protocolFees += swapFee;
+            } else {
+                accounter.accountChange(TOKEN_1, swapFee.toInt256());
+                token1State.protocolFees += swapFee;
+            }
+        }
+
         // Get the deltas
         int256 delta0;
         int256 delta1;
 
-        // Take the fee if needed
-        if (swapFeePerThousands > 0) {
-            uint256 protocolFeeToken0;
-            uint256 protocolFeeToken1;
-            (delta0, delta1, protocolFeeToken0, protocolFeeToken1) =
-                pool.swap(zeroForOne, amount, FEE_BPS, swapFeePerThousands);
+        // Perform the swap and compute the delta
+        (delta0, delta1) = pool.swap(zeroForOne, amount, FEE_BPS);
 
-            token0State.protocolFees += protocolFeeToken0;
-            token1State.protocolFees += protocolFeeToken1;
-        } else {
-            (delta0, delta1) = pool.swap(zeroForOne, amount, FEE_BPS);
-        }
-
+        // Then register the changes (depending on the direction, add the swap fees)
         accounter.accountChange(TOKEN_0, delta0);
         accounter.accountChange(TOKEN_1, delta1);
 
@@ -359,6 +370,28 @@ contract MonoPool is ReentrancyGuard {
         return ptr;
     }
 
+    /// @notice Perform the claim fees operation
+    function _claimFees(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
+        // Ensure the sender of the message of the fee receiver
+        if (feeReceiver != msg.sender) revert NotFeeReceiver();
+
+        // Then check each tokens he has to claims
+        uint256 protocolFees0 = token0State.protocolFees;
+        uint256 protocolFees1 = token1State.protocolFees;
+
+        // Update the state only if he got something to claim
+        if (protocolFees0 > 0) {
+            accounter.accountChange(TOKEN_0, -(protocolFees0.toInt256()));
+            token0State.protocolFees = 0;
+        }
+        if (protocolFees1 > 0) {
+            accounter.accountChange(TOKEN_1, -(protocolFees1.toInt256()));
+            token1State.protocolFees = 0;
+        }
+
+        return ptr;
+    }
+
     /* -------------------------------------------------------------------------- */
     /*                              Token helper op's                             */
     /* -------------------------------------------------------------------------- */
@@ -431,7 +464,7 @@ contract MonoPool is ReentrancyGuard {
     /// @return reserve0
     /// @return reserve1
     function getPoolState() external view returns (uint256, uint256, uint256) {
-        return (pool.totalLiquidity, token0State.totalReserves, token1State.totalReserves);
+        return (pool.totalLiquidity, pool.reserves0, pool.reserves1);
     }
 
     /// @notice Get the current pool position of the given `liquidityProvider`
@@ -447,8 +480,17 @@ contract MonoPool is ReentrancyGuard {
         return (token0State.totalReserves, token1State.totalReserves);
     }
 
+    /// @notice Get the current protocol fees
+    /// @return protocolFees0
+    /// @return protocolFees1
+    function getProtocolFees() external view returns (uint256, uint256) {
+        return (token0State.protocolFees, token1State.protocolFees);
+    }
+
     /// @notice Get the current fees
-    function getFees() external view returns (uint256 bps, uint256 protocolFee) {
-        return (FEE_BPS, protocolFee);
+    /// @return feeBps
+    /// @return protocolFee
+    function getFees() external view returns (uint256, uint256) {
+        return (FEE_BPS, swapFeePerThousands);
     }
 }

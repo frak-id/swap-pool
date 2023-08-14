@@ -36,7 +36,7 @@ abstract contract BaseMonoPoolTest is Test {
     /// @dev base bps to use (5%)
     uint256 internal bps = 50;
 
-    /// @dev the base protocol fees (0.2%)
+    /// @dev the base protocol fees (2%)
     uint16 internal protocolFee = 20;
 
     /// @dev Init some var for the base mono pool test
@@ -63,6 +63,12 @@ abstract contract BaseMonoPoolTest is Test {
     /* -------------------------------------------------------------------------- */
     /*                 Some modifier's to get specific pool states                */
     /* -------------------------------------------------------------------------- */
+
+    modifier outOfGasScope() {
+        vm.pauseGasMetering();
+        _;
+        vm.resumeGasMetering();
+    }
 
     modifier withLiquidity(MonoPool pool, uint256 amount0, uint256 amount1) {
         vm.pauseGasMetering();
@@ -218,9 +224,11 @@ abstract contract BaseMonoPoolTest is Test {
     /* -------------------------------------------------------------------------- */
 
     /// @dev Assert that the pool reserve is synced
-    function _assertReserveSynced(MonoPool pool) internal {
+    function _assertReserveSynced(MonoPool pool) internal outOfGasScope {
+        vm.pauseGasMetering();
         (address _token0, address _token1) = pool.getTokens();
         (uint256 reserve0, uint256 reserve1) = pool.getReserves();
+        (uint256 pFees0, uint256 pFees1) = pool.getProtocolFees();
         (, uint256 poolReserve0, uint256 poolReserve1) = pool.getPoolState();
 
         // Assert the balance of the contract eq the reserve
@@ -228,8 +236,31 @@ abstract contract BaseMonoPoolTest is Test {
         assertEq(_token1.balanceOf(address(pool)), reserve1);
 
         // Assert the pool state equal the contract reserve
-        assertEq(poolReserve0, reserve0);
-        assertEq(poolReserve1, reserve1);
+        // TODO: This should succeed, the protocol fees shouldn't be compted inside the pool reservce!
+        assertEq(poolReserve0, reserve0 - pFees0);
+        assertEq(poolReserve1, reserve1 - pFees1);
+        vm.resumeGasMetering();
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                             Some logs helper's                             */
+    /* -------------------------------------------------------------------------- */
+
+    function _logPoolState(MonoPool pool) internal view {
+        (uint256 reserve0, uint256 reserve1) = pool.getReserves();
+        (uint256 pFees0, uint256 pFees1) = pool.getProtocolFees();
+        (uint256 totalLiq, uint256 poolReserve0, uint256 poolReserve1) = pool.getPoolState();
+
+        console.log("- Pool");
+        console.log("-- Total liq: %d", totalLiq);
+        console.log("-- Reserve t0: %d", poolReserve0);
+        console.log("-- Reserve t1: %d", poolReserve1);
+        console.log("- Contract");
+        console.log("-- Reserve t0: %d", reserve0);
+        console.log("-- Reserve t1: %d", reserve1);
+        console.log("- Protocol");
+        console.log("-- Fees t0: %d", pFees0);
+        console.log("-- Fees t1: %d", pFees1);
     }
 
     /* -------------------------------------------------------------------------- */
