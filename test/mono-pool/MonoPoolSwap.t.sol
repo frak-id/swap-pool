@@ -20,9 +20,6 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build our pool
         pool = new MonoPool(address(token0), address(token1), bps, feeReceiver, protocolFee);
-
-        // Disable protocol fees on it
-        _disableProtocolFees(pool);
     }
 
     /// @dev Test swapping token 0 to token 1

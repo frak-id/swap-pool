@@ -53,37 +53,6 @@ library PoolLib {
     }
 
     /**
-     * @dev Swap tokens in the pool
-     * @param self The pool
-     * @param zeroForOne Whether to swap token0 for token1 or token1 for token0
-     * @param amount The amount of token0 or token1 to swap
-     * @param fee The fee to charge for the liquidity providers
-     * @param protocolFee The fee to charge for the protocol
-     * @return delta0 The amount of token0 swapped
-     * @return delta1 The amount of token1 swapped
-     */
-    function swap(
-        Pool storage self,
-        bool zeroForOne,
-        uint256 amount,
-        uint256 fee,
-        uint256 protocolFee
-    )
-        internal
-        returns (int256 delta0, int256 delta1, uint256 protocolFeeToken0, uint256 protocolFeeToken1)
-    {
-        uint256 newReserves0;
-        uint256 newReserves1;
-
-        (newReserves0, newReserves1, delta0, delta1, protocolFeeToken0, protocolFeeToken1) =
-            SwapLib.swap(self.reserves0, self.reserves1, zeroForOne, amount, fee, protocolFee);
-
-        // Update the reserve of the pool
-        self.reserves0 = newReserves0.toUint128();
-        self.reserves1 = newReserves1.toUint128();
-    }
-
-    /**
      * @dev Add liquidity to the pool
      * @param self The pool
      * @param to The address of the liquidity provider
