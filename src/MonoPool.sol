@@ -188,26 +188,45 @@ contract MonoPool is ReentrancyGuard {
         uint256 mop = op & Ops.MASK_OP;
 
         if (mop == Ops.SWAP) {
-            ptr = _swap(accounter, ptr, op);
-        } else if (mop == Ops.SEND_ALL) {
-            ptr = _sendAll(accounter, ptr, op);
-        } else if (mop == Ops.RECEIVE_ALL) {
-            ptr = _receiveAll(accounter, ptr, op);
-        } else if (mop == Ops.PERMIT_WITHDRAW_VIA_SIG) {
-            ptr = _permitViaSig(ptr);
-        } else if (mop == Ops.ADD_LIQ) {
-            ptr = _addLiquidity(accounter, ptr);
-        } else if (mop == Ops.RM_LIQ) {
-            ptr = _removeLiquidity(accounter, ptr);
-        } else if (mop == Ops.CLAIM_ALL_FEES) {
-            ptr = _claimFees(accounter, ptr);
-        } else {
-            // Revert cause of an invalid OP
-            revert InvalidOp(op);
+            return _swap(accounter, ptr, op);
         }
 
-        // Return the updated ptr
-        return ptr;
+        // Send & Receive ALL op's
+        if (mop == Ops.RECEIVE_ALL) {
+            return _receiveAll(accounter, ptr, op);
+        }
+        if (mop == Ops.SEND_ALL) {
+            return _sendAll(accounter, ptr, op);
+        }
+
+        // Send & Receive op's
+        if (mop == Ops.RECEIVE) {
+            return _receive(accounter, ptr, op);
+        }
+        if (mop == Ops.SEND) {
+            return _send(accounter, ptr, op);
+        }
+
+        // Permit helper's
+        if (mop == Ops.PERMIT_WITHDRAW_VIA_SIG) {
+            return _permitViaSig(ptr);
+        }
+
+        // Add & Remove liquidity op's
+        if (mop == Ops.ADD_LIQ) {
+            return _addLiquidity(accounter, ptr);
+        }
+        if (mop == Ops.RM_LIQ) {
+            return _removeLiquidity(accounter, ptr);
+        }
+
+        // Claim fees op's
+        if (mop == Ops.CLAIM_ALL_FEES) {
+            return _claimFees(accounter, ptr);
+        }
+
+        // Revert cause of an invalid OP
+        revert InvalidOp(op);
     }
 
     /// @notice Perform a swap operation
@@ -257,6 +276,68 @@ contract MonoPool is ReentrancyGuard {
 
     /* -------------------------------------------------------------------------- */
     /*                        Token sending / pulling op's                        */
+    /* -------------------------------------------------------------------------- */
+
+    /// @notice Perform the receive operation
+    function _receive(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+        // Get the right token depending on the input
+        address token;
+        TokenState storage tokenState;
+        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+
+        // Get the amount
+        uint256 amount;
+        (ptr, amount) = ptr.readUint(16);
+
+        // Check if that's a native op or not
+        if (op & Ops.NATIVE_TOKEN == 0) {
+            // Perform the transfer
+            token.safeTransferFrom(msg.sender, address(this), amount);
+        } else {
+            // Otherwise, in case of a native token, perform the deposit
+            IWrappedNativeToken(token).deposit{ value: amount }();
+        }
+
+        // Mark the reception state
+        _accountReceived(accounter, tokenState, token);
+
+        return ptr;
+    }
+
+    /// @notice Perform the send operation
+    function _send(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+        // Get address & token state
+        address token;
+        TokenState storage tokenState;
+        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+
+        // Get receiver & amount
+        address to;
+        uint256 amount;
+        (ptr, to) = ptr.readAddress();
+        (ptr, amount) = ptr.readUint(16);
+
+        unchecked {
+            accounter.accountChange(token, amount.toInt256());
+            tokenState.totalReserves -= amount;
+        }
+
+        // Check if that's a native op or not
+        if (op & Ops.NATIVE_TOKEN == 0) {
+            // Simply transfer the tokens
+            token.safeTransfer(to, amount);
+        } else {
+            // Perform the withdraw of the founds
+            IWrappedNativeToken(address(token)).withdraw(amount);
+            // And send them to the recipient
+            to.safeTransferETH(amount);
+        }
+
+        return ptr;
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                      Token sending / pulling ALL op's                      */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the send all operation

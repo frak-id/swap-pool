@@ -155,19 +155,21 @@ library EncoderLib {
      * @param isToken0 Is the token 0 the target of the send operation
      * @param to The recipient of the tokens
      * @param amount The amount of tokens to send
+     * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
     function appendSend(
         bytes memory self,
         bool isToken0,
         address to,
-        uint256 amount
+        uint256 amount,
+        bool isNative
     )
         internal
         pure
         returns (bytes memory)
     {
-        uint256 op = Ops.SEND;
+        uint256 op = Ops.SEND | (isNative ? Ops.NATIVE_TOKEN : 0);
         assembly {
             let length := mload(self)
             mstore(self, add(length, 38))
@@ -261,10 +263,20 @@ library EncoderLib {
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
      * @param amount The amount of tokens to receive
+     * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
-    function appendReceive(bytes memory self, bool isToken0, uint256 amount) internal pure returns (bytes memory) {
-        uint256 op = Ops.RECEIVE;
+    function appendReceive(
+        bytes memory self,
+        bool isToken0,
+        uint256 amount,
+        bool isNative
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 op = Ops.RECEIVE | (isNative ? Ops.NATIVE_TOKEN : 0);
         assembly {
             let length := mload(self)
             mstore(self, add(length, 18))
