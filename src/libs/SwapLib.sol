@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { SafeCastLib } from "solady/utils/SafeCastLib.sol";
 
-uint256 constant BPS = 1e4;
+uint256 constant BPS = 10_000;
 
 /// @title SwapLib
 /// @notice Library for calculating swap amounts and reserves

@@ -33,11 +33,11 @@ abstract contract BaseMonoPoolTest is Test {
     address internal swapUser;
     uint256 internal swapUserPrivKey;
 
-    /// @dev base bps to use (5%)
-    uint256 internal bps = 50;
+    /// @dev base bps to use (2%)
+    uint256 internal bps = 200;
 
     /// @dev the base protocol fees (2%)
-    uint16 internal protocolFee = 20;
+    uint16 internal protocolFee = 200;
 
     /// @dev Init some var for the base mono pool test
     function _initBaseMonoPoolTest() internal {
@@ -130,6 +130,19 @@ abstract contract BaseMonoPoolTest is Test {
     /* -------------------------------------------------------------------------- */
     /*                                Swap helper's                               */
     /* -------------------------------------------------------------------------- */
+
+    function _simulateSwapActivity(MonoPool pool, uint256 maxAmount) internal outOfGasScope {
+        // Perform a few swap's from t0 -> t1 and t1 -> t0
+        _multipleSwap(pool, maxAmount / 2, 10);
+
+        // A few only from t1 -> t0
+        _swap1to0(pool, maxAmount / 10);
+        _swap1to0(pool, maxAmount / 5);
+        _swap1to0(pool, maxAmount / 10);
+
+        // Once again some multiple swap with a lowest ampltitude
+        _multipleSwap(pool, maxAmount / 3, 10);
+    }
 
     function _multipleSwap(MonoPool pool, uint256 swapAmount, uint256 swapCount) internal {
         token0.mint(swapUser, swapAmount);

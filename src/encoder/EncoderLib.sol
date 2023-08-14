@@ -224,7 +224,7 @@ library EncoderLib {
      * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
-    function appendSendAllWithLimit(
+    function appendSendAllWithLimits(
         bytes memory self,
         bool isToken0,
         address to,
@@ -293,6 +293,39 @@ library EncoderLib {
 
             mstore(initialOffset, shl(248, op))
             mstore(add(initialOffset, 1), shl(248, isToken0))
+        }
+
+        return self;
+    }
+
+    /**
+     * @notice Appends the receive all operation to the encoded operations
+     * @param self The encoded operations
+     * @param isToken0 Is the token 0 the target of the send operation
+     * @param minAmount The min amount of token to receive
+     * @param maxAmount The max amount of token to receive
+     * @return program The updated encoded operations
+     */
+    function appendReceiveAllWithLimits(
+        bytes memory self,
+        bool isToken0,
+        uint256 minAmount,
+        uint256 maxAmount
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 op = Ops.RECEIVE_ALL | Ops.ALL_MIN_BOUND | Ops.ALL_MAX_BOUND;
+        assembly {
+            let length := mload(self)
+            mstore(self, add(length, 34))
+            let initialOffset := add(add(self, 0x20), length)
+
+            mstore(initialOffset, shl(248, op))
+            mstore(add(initialOffset, 1), shl(248, isToken0))
+            mstore(add(initialOffset, 2), shl(128, minAmount)) // uint128 -> bytes16
+            mstore(add(initialOffset, 18), shl(128, maxAmount)) // uint128 -> bytes16
         }
 
         return self;

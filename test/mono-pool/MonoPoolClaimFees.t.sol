@@ -57,7 +57,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         (uint256 protocolFees0,) = pool.getProtocolFees();
         assertGt(protocolFees0, 0);
         // Ensure the amount match the percent picked
-        assertEq((amountToSwap * protocolFee / 1000), protocolFees0);
+        assertEq((amountToSwap * protocolFee / 10_000), protocolFees0);
     }
 
     /// @dev Test adding liquidity
@@ -149,7 +149,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // Can't update the fees amount is too large (5.1% here)
         vm.expectRevert();
         vm.prank(feeReceiver);
-        pool.updateFeeReceiver(feeReceiver, 51);
+        pool.updateFeeReceiver(feeReceiver, 500);
     }
 
     function test_updateAddressAndFees_ko_NotTheFeeReceiver() public {

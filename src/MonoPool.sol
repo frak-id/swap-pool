@@ -13,6 +13,9 @@ import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
 
+// Unit for the protocol fees
+uint256 constant PROTOCOL_FEES = 10_000;
+
 /// @title MonoPool
 /// @notice Same as the original MegaTokenPool, but with a single ERC_20 base token (useful for project that want a pool
 /// for their internal swap)
@@ -28,7 +31,7 @@ contract MonoPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @dev The max swap fee (5%)
-    uint256 private constant MAX_SWAP_FEE = 50;
+    uint256 private constant MAX_PROTOCOL_FEE = 500;
 
     /// @dev The min thresholds for the liqidity
     uint256 private constant MIN_LIQUIDITY_THRESHOLDS = 1000 ether;
@@ -36,11 +39,11 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The max thresholds for the liqidity
     uint256 private constant MAX_LIQUIDITY_THRESHOLDS = 1_000_000 ether;
 
-    /// @dev The min dynamic bps fees (0.2%)
+    /// @dev The min dynamic bps fees (0.02%)
     uint256 private constant MIN_BPS = 2;
 
     /// @dev The max dynamic bps fees (1%)
-    uint256 private constant MAX_BPS = 10;
+    uint256 private constant MAX_BPS = 100;
 
     /**
      * @dev The token state to handle reserves & protocol fees
@@ -54,15 +57,15 @@ contract MonoPool is ReentrancyGuard {
     /*                                   Storage                                  */
     /* -------------------------------------------------------------------------- */
 
-    /// @dev The fee that will be taken from each swaps
-    uint256 private immutable FEE_BPS;
-
     /// @dev The token's we will use for the pool
     address private immutable TOKEN_0;
     address private immutable TOKEN_1;
 
     /// @dev The fee that will be taken from each swaps
-    uint16 private swapFeePerThousands;
+    uint256 private immutable FEE_BPS;
+
+    /// @dev The fee that will be taken from each swaps
+    uint256 private protocolFee;
 
     /// @dev The receiver for the swap fees
     address private feeReceiver;
@@ -81,7 +84,7 @@ contract MonoPool is ReentrancyGuard {
     error InvalidOp(uint256 op);
     error LeftOverDelta();
     error InvalidGive();
-    error NegativeAmount();
+    error NegativeSend();
     error NegativeReceive();
     error AmountOutsideBounds();
     error NotFeeReceiver();
@@ -90,12 +93,15 @@ contract MonoPool is ReentrancyGuard {
     /*                                 Constructor                                */
     /* -------------------------------------------------------------------------- */
 
-    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _swapFeePerThousands) {
+    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
         require(feeBps < BPS);
         require(token0 != address(0));
         require(token1 != address(0));
-        require(_feeReceiver != address(0));
-        require(_swapFeePerThousands <= MAX_SWAP_FEE);
+
+        // If no fees receiver passed, pass 0 arguments
+        if (_feeReceiver == address(0)) {
+            require(_protocolFee == 0);
+        }
 
         // Save base pool info's
         FEE_BPS = feeBps;
@@ -104,7 +110,7 @@ contract MonoPool is ReentrancyGuard {
 
         // Save info's about protocol receiver
         feeReceiver = _feeReceiver;
-        swapFeePerThousands = _swapFeePerThousands;
+        protocolFee = _protocolFee;
     }
 
     /// @dev Just tell use that this smart contract can receive native tokens
@@ -121,18 +127,18 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Update the fee receiver and the fee amount
     /// @dev Only the current fee receiver can update the fee receiver and the amount
     /// @param _feeReceiver The new fee receiver
-    /// @param _swapFeePerThousands The new fee amount per thousand
-    function updateFeeReceiver(address _feeReceiver, uint16 _swapFeePerThousands) external {
+    /// @param _protocolFee The new fee amount per thousand
+    function updateFeeReceiver(address _feeReceiver, uint16 _protocolFee) external {
         if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
-        require(_swapFeePerThousands <= MAX_SWAP_FEE);
+        require(_protocolFee < MAX_PROTOCOL_FEE);
 
         if (_feeReceiver == address(0)) {
-            require(_swapFeePerThousands == 0);
+            require(_protocolFee == 0);
         }
 
         feeReceiver = _feeReceiver;
-        swapFeePerThousands = _swapFeePerThousands;
+        protocolFee = _protocolFee;
     }
 
     /**
@@ -214,8 +220,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 swapFee = 0;
 
         // If we got a swap fee, deduce it from the amount to swap
-        if (swapFeePerThousands > 0) {
-            swapFee = (amount * swapFeePerThousands) / 1000;
+        if (protocolFee > 0) {
+            swapFee = (amount * protocolFee) / PROTOCOL_FEES;
             // Decrease the amount of the fees we will take
             amount = amount - swapFee;
 
@@ -256,7 +262,7 @@ contract MonoPool is ReentrancyGuard {
 
         // Get the delta for the current accounting
         int256 delta = accounter.resetChange(token);
-        if (delta > 0) revert NegativeAmount();
+        if (delta > 0) revert NegativeSend();
 
         // Get the limits
         uint256 minSend = 0;
@@ -491,6 +497,23 @@ contract MonoPool is ReentrancyGuard {
     /// @return feeBps
     /// @return protocolFee
     function getFees() external view returns (uint256, uint256) {
-        return (FEE_BPS, swapFeePerThousands);
+        return (FEE_BPS, protocolFee);
+    }
+
+    /// @dev Returns the `amountOut` of token that will be received in exchange of `inAmount` in the direction
+    /// `zeroForOne`.
+    function estimateSwap(uint256 inAmount, bool zeroForOne) external view returns (uint256 amountOut) {
+        // Deduce the swap fee
+        inAmount -= (protocolFee * inAmount) / 1000;
+
+        // Get our pour reservices
+        uint256 reserves0 = pool.reserves0;
+        uint256 reserves1 = pool.reserves1;
+
+        if (zeroForOne) {
+            amountOut = reserves1 - (reserves0 * reserves1) / (reserves0 + inAmount * (BPS - FEE_BPS) / BPS);
+        } else {
+            amountOut = reserves0 - (reserves0 * reserves1) / (reserves1 + inAmount * (BPS - FEE_BPS) / BPS);
+        }
     }
 }
