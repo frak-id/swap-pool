@@ -37,7 +37,7 @@ contract MonoPoolSwapViaPermitTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = _initSwapAndPermitProgram(swapAmount)
             .appendReceiveAll(true)
-            .appendSendAll(false, swapUser)
+            .appendSendAll(false, swapUser, false)
             .done();
 
         // Send it
@@ -56,7 +56,22 @@ contract MonoPoolSwapViaPermitTest is BaseMonoPoolTest {
     /// @dev Generate the permit program
     function _initSwapAndPermitProgram(uint256 swapAmount) internal view returns (bytes memory program) {
         // Generate the permit signature
-        (uint8 v, bytes32 r, bytes32 s, uint256 deadline) = _generateSignature(swapUser, swapAmount);
+
+        uint256 deadline = block.timestamp + 100;
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            swapUserPrivKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    token0.DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            _PERMIT_TYPEHASH, swapUser, address(pool), swapAmount, token0.nonces(swapUser), deadline
+                        )
+                    )
+                )
+            )
+        );
 
         // Build the permit and swap op
         // forgefmt: disable-next-item
@@ -65,26 +80,5 @@ contract MonoPoolSwapViaPermitTest is BaseMonoPoolTest {
                 .appendSwap(true, swapAmount)
                 .appendPermitViaSig(true, swapAmount, deadline, v, r, s);
         }
-    }
-
-    function _generateSignature(
-        address user,
-        uint256 amount
-    )
-        internal
-        view
-        returns (uint8 v, bytes32 r, bytes32 s, uint256 deadline)
-    {
-        deadline = block.timestamp + 100;
-        (v, r, s) = vm.sign(
-            swapUserPrivKey,
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    token0.DOMAIN_SEPARATOR(),
-                    keccak256(abi.encode(_PERMIT_TYPEHASH, user, address(pool), amount, token0.nonces(user), deadline))
-                )
-            )
-        );
     }
 }

@@ -3,11 +3,12 @@ pragma solidity ^0.8.0;
 
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 import { SafeCastLib } from "solady/utils/SafeCastLib.sol";
+import { ERC20 } from "solady/tokens/ERC20.sol";
 import { Pool } from "./libs/PoolLib.sol";
 import { Accounter } from "./libs/AccounterLib.sol";
 import { BPS } from "./libs/SwapLib.sol";
 import { Ops } from "./Ops.sol";
-import { ERC20 } from "solady/tokens/ERC20.sol";
+import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
 
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
@@ -104,6 +105,13 @@ contract MonoPool is ReentrancyGuard {
         // Save info's about protocol receiver
         feeReceiver = _feeReceiver;
         swapFeePerThousands = _swapFeePerThousands;
+    }
+
+    /// @dev Just tell use that this smart contract can receive native tokens
+    receive() external payable {
+        // TODO: directly call _accountReceived()?
+        // TODO: Native token pool? If yes, how to handle multi wrapped erc20 tokens?
+        // TODO: Native token pool with direct handling of native transfer via msg.value diffs?
     }
 
     /* -------------------------------------------------------------------------- */
@@ -256,8 +264,16 @@ contract MonoPool is ReentrancyGuard {
         // Decrease the total reserve
         tokenState.totalReserves -= amount;
 
-        // Transfer the tokens
-        token.safeTransfer(to, amount);
+        // Check if that's a native op or not
+        if (op & Ops.NATIVE_TOKEN != 0) {
+            // Perform the withdraw of the founds
+            IWrappedNativeToken(address(token)).withdraw(amount);
+            // And send them to the recipient
+            to.safeTransferETH(amount);
+        } else {
+            // Simply transfer the tokens
+            token.safeTransfer(to, amount);
+        }
 
         return ptr;
     }
@@ -284,8 +300,16 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount = uint256(delta);
         if (amount < minReceive || amount > maxReceive) revert AmountOutsideBounds();
 
-        // Perform the transfer
-        token.safeTransferFrom(msg.sender, address(this), amount);
+        // Check if that's a native op or not
+        if (op & Ops.NATIVE_TOKEN == 0) {
+            // Perform the transfer
+            token.safeTransferFrom(msg.sender, address(this), amount);
+        } else {
+            // Otherwise, in case of a native token, perform the deposit
+            IWrappedNativeToken(token).deposit{ value: amount }();
+        }
+
+        // Mark the reception state
         _accountReceived(accounter, tokenState, token);
 
         return ptr;

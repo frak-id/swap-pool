@@ -51,61 +51,77 @@ To compile and test the contracts, we utilize [foundry](https://github.com/found
 - Encoding of individual operations can be found in the `EncoderLib`.
 - **Note**: Operation names are from the pool's viewpoint. For example, "send" means the pool is transferring assets to an external party.
 
-### Supported Operations (Ops) 🛠️
+## Supported Operations 🔧
 
-The system has a set of predefined operations that can be executed within the pool. These operations are represented as constants in the `Ops` library.
+The `Ops` library delineates all the operations permissible by the swap contracts. These operations are enumerated as constants. 
 
-- **SWAP Operation**: Used for swap transactions.
-  - **Operation Type**: `SWAP = 0x00`
+### How to Set and Check Ops with Masks
+
+To set an operation with a mask: `op | MASK`
+To check if an operation has a mask set: `op & MASK != 0`
+
+### List of Operations
+
+- **SWAP Operation**: Used for swapping transactions.
+  - **Operation Code**: `SWAP = 0x00`
   - **Direction Flag**: 
-    - Used to extract the operation's direction.
+    - Extracts the direction of the operation.
     - `SWAP_DIR = 0x01`
+    
+- **SEND_ALL Operation**: Allows the pool to send all tokens to the user.
+  - **Operation Code**: `SEND_ALL = 0x10`
 
-- **SEND_ALL Operation**: Enables the pool to send all tokens to a user.
-  - **Operation Type**: `SEND_ALL = 0x10`
-  - **Bounds**:
-    - Minimum: `ALL_MIN_BOUND = 0x01`
-    - Maximum: `ALL_MAX_BOUND = 0x02`
+- **RECEIVE_ALL Operation**: Allows the user to send all tokens to the pool.
+  - **Operation Code**: `RECEIVE_ALL = 0x20`
 
-- **RECEIVE_ALL Operation**: Allows a user to send all their tokens to the pool.
-  - **Operation Type**: `RECEIVE_ALL = 0x20`
-  - **Bounds**:
-    - Minimum: `ALL_MIN_BOUND = 0x01`
-    - Maximum: `ALL_MAX_BOUND = 0x02`
+- **SEND Operation**: Allows the pool to send tokens to the user.
+  - **Operation Code**: `SEND = 0x30`
 
-- **SEND Operation**: Enables the pool to send tokens to a user.
-  - **Operation Type**: `SEND = 0x30`
+- **RECEIVE Operation**: Allows the user to send tokens to the pool.
+  - **Operation Code**: `RECEIVE = 0x40`
 
-- **RECEIVE Operation**: Allows a user to send tokens to the pool.
-  - **Operation Type**: `RECEIVE = 0x40`
+- **PERMIT_WITHDRAW_VIA_SIG Operation**: Enables permit functionality using EIP-2612.
+  - **Operation Code**: `PERMIT_WITHDRAW_VIA_SIG = 0x50`
 
-- **PERMIT_WITHDRAW_VIA_SIG Operation**: Enables operations using EIP-2612's permit functionality.
-  - **Operation Type**: `PERMIT_WITHDRAW_VIA_SIG = 0x50`
+- **ADD_LIQ Operation**: Adds liquidity to the pool.
+  - **Operation Code**: `ADD_LIQ = 0x60`
 
-- **ADD_LIQ Operation**: Used to add liquidity to the pool.
-  - **Operation Type**: `ADD_LIQ = 0x60`
+- **RM_LIQ Operation**: Removes liquidity from the pool.
+  - **Operation Code**: `RM_LIQ = 0x70`
 
-- **RM_LIQ Operation**: Used to remove liquidity from the pool.
-  - **Operation Type**: `RM_LIQ = 0x70`
+- **CLAIM_ALL_FEES Operation**: Allows the operator to claim all fees.
+  - **Operation Code**: `CLAIM_ALL_FEES = 0x80`
 
-- **CLAIM_ALL_FEES Operation**: Allows the operator to claim fees.
-  - **Operation Type**: `CLAIM_ALL_FEES = 0x80`
+### Masks for `ALL` Operations
+- **Minimum Token Amount**:
+  - `ALL_MIN_BOUND = 0x01` (with mask `0001`)
+  
+- **Maximum Token Amount**:
+  - `ALL_MAX_BOUND = 0x02` (with mask `0010`)
+  
+### Handling Native Tokens
+- **Native Token Mask**: Used to manage native tokens, for wrapping or unwrapping. Relevant for all 'SEND' & 'RECEIVE' ops (including 'ALL' variants).
+  - **Mask**: `NATIVE_TOKEN = 0x04` (with mask `0100`)
 
-Each operation is uniquely identified by a combination of its type and possible flags. The `MASK_OP` is used to extract the type of operation, with its value being `MASK_OP = 0xf0`.
+For an intricate understanding, consider examining the `Ops` library's source code.
+
 
 ## Contract Structure 📜
 
-```ml
+```plaintext
 .
-├── Ops.sol               - Contains the list of all available operations (Ops).
-├── encoder
-│   ├── DecoderLib.sol    - Helps decode data for each operation.
-│   └── EncoderLib.sol    - Assists off-chain users. Not for on-chain use.
+├── Ops.sol                         - Contains the list of all available operations (Ops).
+├── MonoPool.sol                    - Contract containing a single pool.
+└── encoder
+│   ├── DecoderLib.sol              - Helps decode data for each operation.
+│   └── EncoderLib.sol              - Assists off-chain users. Not for on-chain use.
 └── lib
-    ├── AccounterLib.sol  - Library with in-memory accounting logic.
-    ├── MemMappingLib.sol - Logic to build in-memory key-value mappings.
-    └── SwapLib.sol       - Contains computations related to swap operations.
-
+│   ├── AccounterLib.sol            - Contains in-memory accounting logic using MemMappingLib.
+│   ├── MemMappingLib.sol           - Logic to build our in-memory mapping, storing key-value pairs.
+│   ├── SwapLib.sol                 - Related to swap operation computation.
+│   └── PoolLib.sol                 - Handles pool logic (add/rm liquidity, trigger swap).
+└── interfaces
+    └── IWrappedNativeToken.sol     - Generic interface for the wrapped native token.
 ```
 
 Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.

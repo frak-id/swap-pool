@@ -5,11 +5,11 @@ import { ERC20 } from "solady/tokens/ERC20.sol";
 
 /// @author KONFeature <https://github.com/KONFeature>
 contract MockERC20 is ERC20 {
-    function name() public pure override returns (string memory) {
+    function name() public pure virtual override returns (string memory) {
         return "Mock Token";
     }
 
-    function symbol() public pure override returns (string memory) {
+    function symbol() public pure virtual override returns (string memory) {
         return "MCK";
     }
 

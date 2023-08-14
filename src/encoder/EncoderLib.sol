@@ -18,7 +18,7 @@ library EncoderLib {
     /// @param hashMapSize The size of the hashmap to use for our program
     function init(uint256 hashMapSize) internal pure returns (bytes memory program) {
         require(hashMapSize <= 0xffff);
-        assembly ("memory-safe") {
+        assembly {
             program := mload(0x40)
             mstore(0x40, add(program, 0x22))
             mstore(add(program, 2), hashMapSize)
@@ -30,9 +30,9 @@ library EncoderLib {
     /// @dev It will set the free memory pointer to the end of the value
     /// @dev Not optimized for gas efficiency, only for security purposes
     /// @param self The value to return
-    /// @return The value to return
+    /// @return program The value to return
     function done(bytes memory self) internal pure returns (bytes memory) {
-        assembly ("memory-safe") {
+        assembly {
             let freeMem := mload(0x40)
             mstore(0x40, add(freeMem, mload(self)))
         }
@@ -48,11 +48,11 @@ library EncoderLib {
      * @param self The encoded operations
      * @param zeroForOne The direction of the swap
      * @param amount The amount to swap
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendSwap(bytes memory self, bool zeroForOne, uint256 amount) internal pure returns (bytes memory) {
         uint256 op = Ops.SWAP | (zeroForOne ? Ops.SWAP_DIR : 0);
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 17))
             let initialOffset := add(add(self, 0x20), length)
@@ -74,7 +74,7 @@ library EncoderLib {
      * @param to The recipient of the liquidity tokens
      * @param maxAmount0 The maximum amount of baseToken to add
      * @param maxAmount1 The maximum amount of targetToken to add
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendAddLiquidity(
         bytes memory self,
@@ -88,7 +88,7 @@ library EncoderLib {
     {
         // 73 = 1 byte for the op code + 2 addresses + 2 uint256s
         uint256 op = Ops.ADD_LIQ;
-        assembly ("memory-safe") {
+        assembly {
             // Increase the length of the bytes array by 73 bytes
             let length := mload(self)
             mstore(self, add(length, 53))
@@ -109,12 +109,12 @@ library EncoderLib {
      * @notice Appends the remove liquidity operation to the encoded operations
      * @param self The encoded operations
      * @param liquidity The amount of liquidity to remove
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendRemoveLiquidity(bytes memory self, uint256 liquidity) internal pure returns (bytes memory) {
         uint256 op = Ops.RM_LIQ;
 
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 33))
             let initialOffset := add(add(self, 0x20), length)
@@ -129,11 +129,11 @@ library EncoderLib {
     /**
      * @notice Appends the claim all fees operation to the encoded operations
      * @param self The encoded operations
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendClaimFees(bytes memory self) internal pure returns (bytes memory) {
         uint256 op = Ops.CLAIM_ALL_FEES;
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 1))
             let initialOffset := add(add(self, 0x20), length)
@@ -155,7 +155,7 @@ library EncoderLib {
      * @param isToken0 Is the token 0 the target of the send operation
      * @param to The recipient of the tokens
      * @param amount The amount of tokens to send
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendSend(
         bytes memory self,
@@ -168,7 +168,7 @@ library EncoderLib {
         returns (bytes memory)
     {
         uint256 op = Ops.SEND;
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 38))
             let initialOffset := add(add(self, 0x20), length)
@@ -187,11 +187,21 @@ library EncoderLib {
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
      * @param to The recipient of the tokens
-     * @return The updated encoded operations
+     * @param isNative Is it a native token
+     * @return program The updated encoded operations
      */
-    function appendSendAll(bytes memory self, bool isToken0, address to) internal pure returns (bytes memory) {
-        uint256 op = Ops.SEND_ALL;
-        assembly ("memory-safe") {
+    function appendSendAll(
+        bytes memory self,
+        bool isToken0,
+        address to,
+        bool isNative
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 op = Ops.SEND_ALL | (isNative ? Ops.NATIVE_TOKEN : 0);
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 22))
             let initialOffset := add(add(self, 0x20), length)
@@ -211,21 +221,23 @@ library EncoderLib {
      * @param to The recipient of the tokens
      * @param minAmount The min amount of token to send
      * @param maxAmount The max amount of token to send
-     * @return The updated encoded operations
+     * @param isNative Is it a native token to handle
+     * @return program The updated encoded operations
      */
     function appendSendAllWithLimit(
         bytes memory self,
         bool isToken0,
         address to,
         uint256 minAmount,
-        uint256 maxAmount
+        uint256 maxAmount,
+        bool isNative
     )
         internal
         pure
         returns (bytes memory)
     {
-        uint256 op = Ops.SEND_ALL + Ops.ALL_MIN_BOUND + Ops.ALL_MAX_BOUND;
-        assembly ("memory-safe") {
+        uint256 op = Ops.SEND_ALL | Ops.ALL_MIN_BOUND | Ops.ALL_MAX_BOUND | (isNative ? Ops.NATIVE_TOKEN : 0);
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 54))
             let initialOffset := add(add(self, 0x20), length)
@@ -249,11 +261,11 @@ library EncoderLib {
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
      * @param amount The amount of tokens to receive
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendReceive(bytes memory self, bool isToken0, uint256 amount) internal pure returns (bytes memory) {
         uint256 op = Ops.RECEIVE;
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 18))
             let initialOffset := add(add(self, 0x20), length)
@@ -270,11 +282,31 @@ library EncoderLib {
      * @notice Appends the receive all operation to the encoded operations
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendReceiveAll(bytes memory self, bool isToken0) internal pure returns (bytes memory) {
         uint256 op = Ops.RECEIVE_ALL;
-        assembly ("memory-safe") {
+        assembly {
+            let length := mload(self)
+            mstore(self, add(length, 2))
+            let initialOffset := add(add(self, 0x20), length)
+
+            mstore(initialOffset, shl(248, op))
+            mstore(add(initialOffset, 1), shl(248, isToken0))
+        }
+
+        return self;
+    }
+
+    /**
+     * @notice Appends the receive all operation to the encoded operations
+     * @param self The encoded operations
+     * @param isToken0 Is the token 0 the target of the send operation
+     * @return program The updated encoded operations
+     */
+    function appendReceiveAllNative(bytes memory self, bool isToken0) internal pure returns (bytes memory) {
+        uint256 op = Ops.RECEIVE_ALL | Ops.NATIVE_TOKEN;
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 2))
             let initialOffset := add(add(self, 0x20), length)
@@ -296,7 +328,7 @@ library EncoderLib {
      * @param v The v value of the permit signature (uint8)
      * @param r The r value of the permit signature (bytes32)
      * @param s The s value of the permit signature (bytes32)
-     * @return The updated encoded operations
+     * @return program The updated encoded operations
      */
     function appendPermitViaSig(
         bytes memory self,
@@ -312,7 +344,7 @@ library EncoderLib {
         returns (bytes memory)
     {
         uint256 op = Ops.PERMIT_WITHDRAW_VIA_SIG;
-        assembly ("memory-safe") {
+        assembly {
             let length := mload(self)
             mstore(self, add(length, 89))
             let initialOffset := add(add(self, 0x20), length)

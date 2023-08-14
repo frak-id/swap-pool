@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
+import { MockWrappedNativeERC20 } from "test/mock/MockWrappedNativeERC20.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
 /// @dev Generic contract to test ono pool, providing some helpers
@@ -17,6 +18,10 @@ abstract contract BaseMonoPoolTest is Test {
     /// @dev A few tokens to use for pool construction
     MockERC20 internal token0;
     MockERC20 internal token1;
+
+    /// @dev Wrapped native token
+    MockWrappedNativeERC20 internal wToken0;
+    MockWrappedNativeERC20 internal wToken1;
 
     /// @dev Our liquidity provider user
     address internal liquidityProvider;
@@ -44,6 +49,9 @@ abstract contract BaseMonoPoolTest is Test {
         // Create a few tokens
         token0 = _newToken("token0");
         token1 = _newToken("token1");
+
+        wToken0 = _newWrappedNativeToken("wToken0");
+        wToken1 = _newWrappedNativeToken("wToken1");
     }
 
     /// @dev Disable pool fees
@@ -66,6 +74,10 @@ abstract contract BaseMonoPoolTest is Test {
     /* -------------------------------------------------------------------------- */
 
     function _addLiquidity(MonoPool pool, uint256 amountToken0, uint256 amountToken1) internal {
+        // Deal to fake some eth also on each token's (in case they are native)
+        vm.deal(address(token0), amountToken0);
+        vm.deal(address(token1), amountToken1);
+
         // Mint some initial tokens to the liquidity provider
         token0.mint(liquidityProvider, amountToken0);
         token1.mint(liquidityProvider, amountToken1);
@@ -104,7 +116,7 @@ abstract contract BaseMonoPoolTest is Test {
         bytes memory program = EncoderLib.init(4)
             .appendSwap(true, swapAmount)
             .appendReceiveAll(true)
-            .appendSendAll(false, swapUser)
+            .appendSendAll(false, swapUser, false)
             .done();
 
         // Send it
@@ -123,7 +135,7 @@ abstract contract BaseMonoPoolTest is Test {
         bytes memory program = EncoderLib.init(4)
             .appendSwap(false, swapAmount)
             .appendReceiveAll(false)
-            .appendSendAll(true, swapUser)
+            .appendSendAll(true, swapUser, false)
             .done();
 
         // Send it
@@ -156,6 +168,11 @@ abstract contract BaseMonoPoolTest is Test {
 
     function _newToken(string memory label) internal returns (MockERC20 newToken) {
         newToken = new MockERC20();
+        vm.label(address(newToken), label);
+    }
+
+    function _newWrappedNativeToken(string memory label) internal returns (MockWrappedNativeERC20 newToken) {
+        newToken = new MockWrappedNativeERC20();
         vm.label(address(newToken), label);
     }
 
