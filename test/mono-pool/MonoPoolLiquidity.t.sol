@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/console.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
+import { PoolLib } from "src/libs/PoolLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
 import { BaseMonoPoolTest } from "./BaseMonoPoolTest.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -231,5 +232,118 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
             finalPoolRatio = newPoolReserveToken1 / newPoolReserveToken0;
         }
         assertEq(initialPoolRatio, finalPoolRatio);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                             Removing liquidity                             */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Test removing half of the liquidity inserted
+    function test_removeHalfLiquidity_ok() public {
+        // Put the initial liquidity
+        uint256 initialLiq0 = 100 ether;
+        uint256 initialLiq1 = 30 ether;
+        _addLiquidity(pool, initialLiq0, initialLiq1);
+
+        // Get our liquidity provider position
+        uint256 position = pool.getPosition(liquidityProvider);
+
+        // Build the program to execute
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(3)
+            .appendRemoveLiquidity(position / 2)
+            .appendSendAll(true, liquidityProvider, false)
+            .appendSendAll(false, liquidityProvider, false)
+            .done();
+        // Execute it
+        vm.prank(liquidityProvider);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the reserve of each tokens has increase
+        uint256 newPosition = pool.getPosition(liquidityProvider);
+        assertLt(newPosition, position);
+
+        // Ensre the user has retreived token 0 and 1
+        assertGt(token0.balanceOf(liquidityProvider), 0);
+        assertGt(token1.balanceOf(liquidityProvider), 0);
+    }
+
+    /// @dev Test removing liquidity post creation
+    function test_removeLiquidity_ok() public {
+        // Put the initial liquidity
+        uint256 initialLiq0 = 100 ether;
+        uint256 initialLiq1 = 30 ether;
+        _addLiquidity(pool, initialLiq0, initialLiq1);
+
+        // Get our liquidity provider position
+        uint256 position = pool.getPosition(liquidityProvider);
+
+        // Build the program to execute
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(3)
+            .appendRemoveLiquidity(position)
+            .appendSendAll(true, liquidityProvider, false)
+            .appendSendAll(false, liquidityProvider, false)
+            .done();
+        // Execute it
+        vm.prank(liquidityProvider);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the reserve of each tokens has increase
+        uint256 newPosition = pool.getPosition(liquidityProvider);
+        assertLt(newPosition, position);
+        assertEq(newPosition, 0);
+
+        // Ensre the user has retreived token 0 and 1
+        assertEq(token0.balanceOf(liquidityProvider), initialLiq0);
+        assertEq(token1.balanceOf(liquidityProvider), initialLiq1);
+    }
+
+    /// @dev Test removing liquidity post after a lot of states
+    function test_removeLiquidityPostStates_ok() public withLotOfState(pool) {
+        // Get our liquidity provider position
+        uint256 position = pool.getPosition(liquidityProvider);
+
+        // Build the program to execute
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(3)
+            .appendRemoveLiquidity(position)
+            .appendSendAll(true, liquidityProvider, false)
+            .appendSendAll(false, liquidityProvider, false)
+            .done();
+        // Execute it
+        vm.prank(liquidityProvider);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the reserve of each tokens has increase
+        uint256 newPosition = pool.getPosition(liquidityProvider);
+        assertLt(newPosition, position);
+        assertEq(newPosition, 0);
+    }
+
+    function test_removeLiquidity_ko_InsuficientLiquidity() public withLiquidity(pool, 100 ether, 30 ether) {
+        // Get our liquidity provider position
+        uint256 position = pool.getPosition(liquidityProvider);
+
+        // Build the program to execute
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(3)
+            .appendRemoveLiquidity(position + 1)
+            .appendSendAll(true, liquidityProvider, false)
+            .appendSendAll(false, liquidityProvider, false)
+            .done();
+        // Execute it
+        vm.expectRevert(PoolLib.InsufficientLiquidity.selector);
+        vm.prank(liquidityProvider);
+        pool.execute(program);
     }
 }

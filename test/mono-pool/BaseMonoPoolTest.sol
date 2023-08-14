@@ -65,7 +65,27 @@ abstract contract BaseMonoPoolTest is Test {
     /* -------------------------------------------------------------------------- */
 
     modifier withLiquidity(MonoPool pool, uint256 amount0, uint256 amount1) {
+        vm.pauseGasMetering();
         _addLiquidity(pool, amount0, amount1);
+        vm.resumeGasMetering();
+        _;
+    }
+
+    modifier withSwaps(MonoPool pool, uint256 initialAmount, uint256 swapCount) {
+        vm.pauseGasMetering();
+        _multipleSwap(pool, initialAmount, swapCount);
+        vm.resumeGasMetering();
+        _;
+    }
+
+    modifier withLotOfState(MonoPool pool) {
+        vm.pauseGasMetering();
+        _addLiquidity(pool, 100 ether, 30 ether);
+        _multipleSwap(pool, 10 ether, 5);
+        _addLiquidity(pool, 200 ether, 60 ether);
+        _multipleSwap(pool, 50 ether, 5);
+        _addLiquidity(pool, 100 ether, 30 ether);
+        vm.resumeGasMetering();
         _;
     }
 
@@ -105,6 +125,18 @@ abstract contract BaseMonoPoolTest is Test {
     /*                                Swap helper's                               */
     /* -------------------------------------------------------------------------- */
 
+    function _multipleSwap(MonoPool pool, uint256 swapAmount, uint256 swapCount) internal {
+        token0.mint(swapUser, swapAmount);
+        // for i swap count
+        for (uint256 i = 0; i < swapCount; i++) {
+            // Swap 0 to 1
+            _swap0to1(pool, swapAmount);
+
+            // Perform the swap back
+            _swap1to0(pool, swapAmount);
+        }
+    }
+
     function _swap0to1(MonoPool pool, uint256 swapAmount) internal {
         // Mint token & approve transfer
         token0.mint(swapUser, swapAmount);
@@ -127,6 +159,44 @@ abstract contract BaseMonoPoolTest is Test {
     function _swap1to0(MonoPool pool, uint256 swapAmount) internal {
         // Mint token & approve transfer
         token1.mint(swapUser, swapAmount);
+        vm.prank(swapUser);
+        token1.approve(address(pool), swapAmount);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(4)
+            .appendSwap(false, swapAmount)
+            .appendReceiveAll(false)
+            .appendSendAll(true, swapUser, false)
+            .done();
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    function _swap0to1(MonoPool pool) internal {
+        // Mint token & approve transfer
+        uint256 swapAmount = token0.balanceOf(swapUser);
+        vm.prank(swapUser);
+        token0.approve(address(pool), swapAmount);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init(4)
+            .appendSwap(true, swapAmount)
+            .appendReceiveAll(true)
+            .appendSendAll(false, swapUser, false)
+            .done();
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    function _swap1to0(MonoPool pool) internal {
+        // Mint token & approve transfer
+        uint256 swapAmount = token1.balanceOf(swapUser);
         vm.prank(swapUser);
         token1.approve(address(pool), swapAmount);
 

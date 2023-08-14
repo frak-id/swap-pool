@@ -265,14 +265,14 @@ contract MonoPool is ReentrancyGuard {
         tokenState.totalReserves -= amount;
 
         // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN != 0) {
+        if (op & Ops.NATIVE_TOKEN == 0) {
+            // Simply transfer the tokens
+            token.safeTransfer(to, amount);
+        } else {
             // Perform the withdraw of the founds
             IWrappedNativeToken(address(token)).withdraw(amount);
             // And send them to the recipient
             to.safeTransferETH(amount);
-        } else {
-            // Simply transfer the tokens
-            token.safeTransfer(to, amount);
         }
 
         return ptr;
@@ -348,9 +348,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the remove liquidity operation
     function _removeLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
-        address token;
         uint256 liq;
-        (ptr, token) = ptr.readAddress();
         (ptr, liq) = ptr.readFullUint();
 
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
@@ -434,6 +432,12 @@ contract MonoPool is ReentrancyGuard {
     /// @return reserve1
     function getPoolState() external view returns (uint256, uint256, uint256) {
         return (pool.totalLiquidity, token0State.totalReserves, token1State.totalReserves);
+    }
+
+    /// @notice Get the current pool position of the given `liquidityProvider`
+    /// @return position
+    function getPosition(address liquidityProvider) external view returns (uint256) {
+        return pool.positions[liquidityProvider];
     }
 
     /// @notice Get the current token states
