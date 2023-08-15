@@ -170,7 +170,7 @@ contract MonoPool is ReentrancyGuard {
         }
 
         // If there are any leftover deltas, revert
-        if (accounter.totalNonZero != 0) revert LeftOverDelta();
+        if (accounter.token0Change != 0 || accounter.token1Change != 0) revert LeftOverDelta();
     }
 
     /* -------------------------------------------------------------------------- */
@@ -251,18 +251,15 @@ contract MonoPool is ReentrancyGuard {
         // If he swap fee cause an overflow, it would be triggered before with the swap amount directly
         unchecked {
             if (zeroForOne && swapFee > 0) {
-                accounter.accountChange(true, delta0 + swapFee.toInt256());
-                accounter.accountChange(false, delta1);
+                accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
                 token0State.protocolFees += swapFee;
             } else if (swapFee > 0) {
-                accounter.accountChange(true, delta0);
-                accounter.accountChange(false, delta1 + swapFee.toInt256());
+                accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
                 token1State.protocolFees += swapFee;
             } else {
-                accounter.accountChange(true, delta0);
-                accounter.accountChange(false, delta1);
+                accounter.accountChange(delta0, delta1);
             }
         }
 
@@ -445,8 +442,7 @@ contract MonoPool is ReentrancyGuard {
 
         (, int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
 
-        accounter.accountChange(true, delta0);
-        accounter.accountChange(false, delta1);
+        accounter.accountChange(delta0, delta1);
 
         return ptr;
     }
@@ -458,8 +454,7 @@ contract MonoPool is ReentrancyGuard {
 
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
 
-        accounter.accountChange(true, delta0);
-        accounter.accountChange(false, delta1);
+        accounter.accountChange(delta0, delta1);
 
         return ptr;
     }

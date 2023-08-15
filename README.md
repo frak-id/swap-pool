@@ -25,18 +25,16 @@ To compile and test the contracts, we utilize [foundry](https://github.com/found
 
 ### Internal Flash Accounting 💡
 
-- The pool uses an "in-memory" method to keep track of all operations, whether they are for providing liquidity or executing multi-hop swaps.
-- Instead of making changes immediately, all balance updates are first recorded internally. This helps in only settling the net changes at the end of an operation block.
-- To track these changes, a hash-map is utilized, residing solely in memory. The caller specifies its size when beginning a batch of operations:
-  - A smaller hash-map is more gas-efficient due to lesser upfront memory allocation. However, it has a higher risk of key collisions, which can make some operations more costly. 
-  - The optimal hash-map size can be determined through off-chain transaction simulations.
+- The pool employs an internal accounting system to keep track of balance changes for two specific tokens, namely `token0` and `token1`, during the course of a transaction block (flash execution).
+- Instead of making changes to the Ethereum state immediately, the contract first tracks net balance changes internally.
+- After all operations have been executed, the contract then applies the final net changes to the actual balances of `token0` and `token1` at the end of the transaction block.
+- This approach aims to minimize gas usage, as frequent state changes (storage operations) are generally costly in terms of gas.
 
 ### Program 📜
 
 - Interactions with the pools are facilitated via the `execute(bytes program)` function.
 - The "program" is essentially a serialized set of operations and follows a specific structure:
-  - The first 2 bytes denote the accounting hash map size in terms of tokens. For instance, `0x0040` stands for a map that accommodates up to 64 key-value pairs.
-  - Every subsequent operation within this program comprises:
+  - Every operation within this program comprises:
     - An 8-bit operation, spanning 1 byte.
     - Data pertaining to the opcode, spanning 'n' bytes.
 - This encoding method ensures minimal calldata size, given that each operation might need different data amounts.
@@ -44,21 +42,23 @@ To compile and test the contracts, we utilize [foundry](https://github.com/found
 ### Operations 🔧
 
 - An 8-bit operation specifier contains two parts:
-  - The first 4 bits (half) represent the operation ID.
+  - The first 4 bits (half) represent the operation ID (Op Code).
   - The latter 4 bits represent flags.
 - Thus, there's the potential for up to 16 primary operations. Each can interpret 4 additional flags.
 - Parameters are always packed tightly.
 - Encoding of individual operations can be found in the `EncoderLib`.
 - **Note**: Operation names are from the pool's viewpoint. For example, "send" means the pool is transferring assets to an external party.
 
+### Masks and Flags 🎭
+
+- Flags are used to modify or extend the behavior of an operation. 
+- Masks, like `NATIVE_TOKEN = 0x04`, are used to work with flags. For example:
+  - To set a flag on an operation: `operationCode |= NATIVE_TOKEN`
+  - To check if a flag is set on an operation: `operationCode & NATIVE_TOKEN != 0`
+
 ## Supported Operations 🔧
 
 The `Ops` library delineates all the operations permissible by the swap contracts. These operations are enumerated as constants. 
-
-### How to Set and Check Ops with Masks
-
-To set an operation with a mask: `op | MASK`
-To check if an operation has a mask set: `op & MASK != 0`
 
 ### List of Operations
 
@@ -110,18 +110,17 @@ For an intricate understanding, consider examining the `Ops` library's source co
 
 ```plaintext
 .
-├── Ops.sol                         - Contains the list of all available operations (Ops).
-├── MonoPool.sol                    - Contract containing a single pool.
-└── encoder
-│   ├── DecoderLib.sol              - Helps decode data for each operation.
-│   └── EncoderLib.sol              - Assists off-chain users. Not for on-chain use.
-└── lib
-│   ├── AccounterLib.sol            - Contains in-memory accounting logic using MemMappingLib.
-│   ├── MemMappingLib.sol           - Logic to build our in-memory mapping, storing key-value pairs.
-│   ├── SwapLib.sol                 - Related to swap operation computation.
-│   └── PoolLib.sol                 - Handles pool logic (add/rm liquidity, trigger swap).
+├── MonoPool.sol               - Contract containing a single pool
+├── Ops.sol                    - Contains the list of all available operations (Ops)
+├── lib
+│   ├── AccounterLib.sol       - Library containing the in-memory accounting logic (account changes, get changes, reset changes etc)
+│   ├── PoolLib.sol            - Related to all the pool logic (add/rm liquidity, trigger swap)
+│   └── SwapLib.sol            - Library containing the stuff related to swap operation computation
+├── encoder
+│   ├── DecoderLib.sol         - Helps decode data for each operation
+│   └── EncoderLib.sol         - Assists off-chain users to build their program. Not for on-chain use. (Gas inefficient)
 └── interfaces
-    └── IWrappedNativeToken.sol     - Generic interface for the wrapped native token.
+    └── IWrappedNativeToken.sol- Generic interface for the wrapped native token
 ```
 
 Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.
