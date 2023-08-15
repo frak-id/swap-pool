@@ -29,6 +29,30 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         _addLiquidity(pool, 1000 ether, 300 ether);
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                    Test all swap configuration option's                    */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Test swapping token 0 to token 1 with send and receive all
+    function test_swap0to1_ko_0SwapInput() public swap0to1Context {
+        // Build the swap op
+        bytes memory program = _buildSwapViaAll(true, 0, swapUser, false);
+
+        vm.expectRevert(MonoPool.Swap0Amount.selector);
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    /// @dev Test swapping token 0 to token 1 with send and receive all
+    function test_swap0to1_ko_0SwapOutput() public swap0to1Context {
+        // Build the swap op
+        bytes memory program = _buildSwapViaAll(true, 1, swapUser, false);
+
+        vm.expectRevert(MonoPool.Swap0Amount.selector);
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ReceiveAll_SendAll_ok() public swap0to1Context {
         // Build the swap op
@@ -171,6 +195,114 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     }
 
     /* -------------------------------------------------------------------------- */
+    /*                              Some fuzzed test                              */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Fuzz test of swap 0 to 1
+    function test_fuzz_swap0To1_ok(uint128 _amount) public {
+        uint256 amount = uint256(bound(_amount, 100, 100 ether));
+
+        // Mint token & approve transfer
+        token0.mint(swapUser, amount);
+        vm.prank(swapUser);
+        token0.approve(address(pool), amount);
+
+        // Build the swap op
+        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, false);
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1(false);
+    }
+
+    /// @dev Fuzz test of swap 0 to 1 with a native dst
+    function test_fuzz_swap0To1_NativeDst_ok(uint128 _amount) public {
+        uint256 amount = uint256(bound(_amount, 100, 100 ether));
+
+        // Mint token & approve transfer
+        token0.mint(swapUser, amount);
+        vm.prank(swapUser);
+        token0.approve(address(pool), amount);
+
+        // Build the swap op
+        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, true);
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1(true);
+    }
+
+    /// @dev Fuzz test of swap 0 to 1
+    function test_fuzz_multiSwap_ok(uint128 _amount) public {
+        uint256 amount = uint256(bound(_amount, 1 ether, 100 ether));
+
+        // Perform initial swap 0 -> 1
+        _swap0to1(pool, amount);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the balance has changed
+        assertEq(token0.balanceOf(swapUser), 0);
+        assertGt(token1.balanceOf(swapUser), 0);
+        assertLt(token1.balanceOf(swapUser), amount);
+
+        // Swap back
+        uint256 preSwapBalance = token1.balanceOf(swapUser);
+        _swap1to0(pool);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the balance has changed
+        assertGt(token0.balanceOf(swapUser), 0);
+        uint256 postSwapBalance = token1.balanceOf(swapUser);
+        // Ensure his taken where swapper
+        assertLt(postSwapBalance, preSwapBalance);
+        assertEq(postSwapBalance, 0);
+    }
+
+    /// @dev Fuzz test of swap 0 to 1 with a native dst
+    function test_fuzz_multiSwap_Native_ok(uint128 _amount) public {
+        uint256 amount = uint256(bound(_amount, 100, 100 ether));
+
+        // Mint token & approve transfer
+        token0.mint(swapUser, amount);
+        vm.prank(swapUser);
+        token0.approve(address(pool), amount);
+
+        // Build the swap op
+        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, true);
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1(true);
+
+        amount = swapUser.balance;
+        // Then swap back using native token directly
+        program = _buildSwapViaDirectReceive(false, amount, swapUser, true, false);
+        // Send it
+        vm.prank(swapUser);
+        pool.execute{ value: amount }(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost1to0();
+    }
+
+    /* -------------------------------------------------------------------------- */
     /*                          Some generic assertion's                          */
     /* -------------------------------------------------------------------------- */
 
@@ -220,47 +352,5 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
             vm.deal(swapUser, swapAmount);
         }
         _;
-    }
-
-    /// @dev Fuzz test of swap 0 to 1
-    function test_fuzz_swap0To1_ok(uint128 _amount) public {
-        uint256 amount = uint256(bound(_amount, 100, 100 ether));
-        _swap0to1(pool, amount);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-
-        // Ensure the user doesn't have token0 anymore
-        assertEq(token0.balanceOf(swapUser), 0);
-        // And that his balance of token 1 has increase
-        assertGt(token1.balanceOf(swapUser), 0);
-    }
-
-    /// @dev Fuzz test of swap 0 to 1
-    function test_fuzz_multiSwap_ok(uint128 _amount) public {
-        uint256 amount = uint256(bound(_amount, 1 ether, 100 ether));
-        _swap0to1(pool, amount);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-
-        // Ensure the balance has changed
-        assertEq(token0.balanceOf(swapUser), 0);
-        assertGt(token1.balanceOf(swapUser), 0);
-        assertLt(token1.balanceOf(swapUser), amount);
-
-        // Swap back
-        uint256 preSwapBalance = token1.balanceOf(swapUser);
-        _swap1to0(pool, preSwapBalance);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-
-        // Ensure the balance has changed
-        assertGt(token0.balanceOf(swapUser), 0);
-        uint256 postSwapBalance = token1.balanceOf(swapUser);
-        // TODO: Should ensure strictly equals, new rules in the contracts
-        // assertGt(preSwapBalance, postSwapBalance);
-        assertGe(preSwapBalance, postSwapBalance);
     }
 }

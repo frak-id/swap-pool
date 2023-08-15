@@ -88,6 +88,7 @@ contract MonoPool is ReentrancyGuard {
     error NegativeReceive();
     error AmountOutsideBounds();
     error NotFeeReceiver();
+    error Swap0Amount();
 
     /* -------------------------------------------------------------------------- */
     /*                                 Constructor                                */
@@ -245,6 +246,9 @@ contract MonoPool is ReentrancyGuard {
 
         // Perform the swap and compute the delta
         (delta0, delta1) = pool.swap(zeroForOne, amount, FEE_BPS);
+
+        // If we got either of one to 0, revert cause of swapping 0 amount
+        if (delta0 == 0 || delta1 == 0) revert Swap0Amount();
 
         // Then register the changes (depending on the direction, add the swap fees)
         // We can perform all of this stuff in an uncheck block since all the value has been checked before

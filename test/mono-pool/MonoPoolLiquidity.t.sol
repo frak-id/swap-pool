@@ -190,9 +190,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
     }
 
     /// @dev Test adding liquidity with fuzz
-    /// @dev TODO: Disabled for now since some edge case can change the liquidity
-    /// @dev TOFIX: URGENT
-    function disabled_test_fuzz_addLiquidity_ok(
+    function test_fuzz_addLiquidity_ok(
         uint128 _amount0,
         uint128 _amount1
     )
@@ -345,5 +343,32 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         vm.expectRevert(PoolLib.InsufficientLiquidity.selector);
         vm.prank(liquidityProvider);
         pool.execute(program);
+    }
+
+    /// @dev Test removing liquidity post creation
+    function test_removeLiquidityAndSwap_ok() public {
+        // Put the initial liquidity
+        uint256 initialLiq0 = 100 ether;
+        uint256 initialLiq1 = 30 ether;
+        _addLiquidity(pool, initialLiq0, initialLiq1);
+
+        // Build the program to execute
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendRemoveLiquidity(pool.getPosition(liquidityProvider) / 10)
+            .appendSwap(true, initialLiq0 / 15)
+            .appendSendAll(true, liquidityProvider, false)
+            .appendSendAll(false, liquidityProvider, false)
+            .done();
+
+        // Execute it
+        vm.prank(liquidityProvider);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensre the user has retreived token 0 and 1
+        assertGt(token1.balanceOf(liquidityProvider), 0);
     }
 }

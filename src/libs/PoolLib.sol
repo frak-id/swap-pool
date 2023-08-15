@@ -88,15 +88,15 @@ library PoolLib {
         } else {
             uint256 reserves0 = self.reserves0;
             uint256 reserves1 = self.reserves1;
+
             uint256 liq0 = total * maxAmount0 / reserves0;
             uint256 liq1 = total * maxAmount1 / reserves1;
 
             if (liq0 > liq1) {
                 newLiquidity = liq1;
-                amount0 = reserves0 * amount1 / reserves1;
                 amount1 = maxAmount1;
+                amount0 = reserves0 * amount1 / reserves1;
             } else {
-                // liq0 <= liq1
                 newLiquidity = liq0;
                 amount0 = maxAmount0;
                 amount1 = reserves1 * amount0 / reserves0;
