@@ -15,14 +15,11 @@ library EncoderLib {
     /// @notice Init a new program with the given size
     /// @dev This function is used to initialize a new program
     /// @dev The done function should absoletely be called to set the free mem pointer after the program creation
-    /// @param hashMapSize The size of the hashmap to use for our program
-    function init(uint256 hashMapSize) internal pure returns (bytes memory program) {
-        require(hashMapSize <= 0xffff);
+    function init() internal pure returns (bytes memory program) {
         assembly {
             program := mload(0x40)
             mstore(0x40, add(program, 0x22))
-            mstore(add(program, 2), hashMapSize)
-            mstore(program, 2)
+            mstore(program, 0)
         }
     }
 

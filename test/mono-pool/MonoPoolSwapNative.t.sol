@@ -66,7 +66,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
             .appendSwap(true, swapAmount)
             .appendReceiveAllNative(true)
             .appendSendAll(false, swapUser, false)
@@ -85,7 +85,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
             .appendSwap(false, swapAmount)
             .appendReceiveAll(false)
             .appendSendAll(true, swapUser, true)

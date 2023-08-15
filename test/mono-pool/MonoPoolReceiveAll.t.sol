@@ -37,7 +37,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount, baseAmount)
                 .appendSendAll(false, swapUser, false)
@@ -67,7 +67,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount + 1, baseAmount)
                 .appendSendAll(false, swapUser, false)
@@ -90,7 +90,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount, baseAmount - 1)
                 .appendSendAll(false, swapUser, false)
@@ -113,7 +113,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build the swap op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(false, baseAmount, baseAmount)
                 .done();

@@ -116,7 +116,7 @@ abstract contract BaseMonoPoolTest is Test {
 
         // Build the program to execute
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(3)
+        bytes memory program = EncoderLib.init()
             .appendAddLiquidity(liquidityProvider, amountToken0, amountToken1)
             .appendReceiveAll(true)
             .appendReceiveAll(false)
@@ -227,7 +227,6 @@ abstract contract BaseMonoPoolTest is Test {
         assertEq(_token1.balanceOf(address(pool)), reserve1);
 
         // Assert the pool state equal the contract reserve
-        // TODO: This should succeed, the protocol fees shouldn't be compted inside the pool reservce!
         assertEq(poolReserve0, reserve0 - pFees0);
         assertEq(poolReserve1, reserve1 - pFees1);
     }
@@ -270,7 +269,7 @@ abstract contract BaseMonoPoolTest is Test {
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
-        program = EncoderLib.init(3)
+        program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
             .appendReceive(isSwap0to1, swapAmount, isNativeSrc)
             .appendSendAll(!isSwap0to1, user, isNativeDst)
@@ -293,7 +292,7 @@ abstract contract BaseMonoPoolTest is Test {
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
-        program = EncoderLib.init(3)
+        program = EncoderLib.init()
             .appendSwap(params.isSwap0to1, params.swapAmount)
             .appendReceive(params.isSwap0to1, params.swapAmount, params.isNativeSrc)
             .appendSend(!params.isSwap0to1, params.user, params.swapOutput, params.isNativeDst)
@@ -312,7 +311,7 @@ abstract contract BaseMonoPoolTest is Test {
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
-        program = EncoderLib.init(3)
+        program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
             .appendReceiveAll(isSwap0to1)
             .appendSendAll(!isSwap0to1, user, isNativeDst)
@@ -335,7 +334,7 @@ abstract contract BaseMonoPoolTest is Test {
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
-        program = EncoderLib.init(3)
+        program = EncoderLib.init()
             .appendSwap(params.isSwap0to1, params.swapAmount)
             .appendReceiveAll(params.isSwap0to1)
             .appendSendAllWithLimits(!params.isSwap0to1, params.user, params.minAmount, params.maxAmount, params.isNativeDst)

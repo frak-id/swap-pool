@@ -34,7 +34,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         _assertReserveSynced(pool);
         // Build the claim only op
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
             .appendClaimFees()
             .done();
 
@@ -69,7 +69,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
 
         // Assert the user can claim his founds
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
             .appendClaimFees()
             .appendSendAll(true, feeReceiver, false)
             .appendSendAll(false, feeReceiver, false)
@@ -100,7 +100,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
     function test_claimFees_ko_NotFeeReceiver() public withLotOfState(pool) {
         // Assert the user can claim his founds
         // forgefmt: disable-next-item
-        bytes memory program = EncoderLib.init(4)
+        bytes memory program = EncoderLib.init()
             .appendClaimFees()
             .appendSendAll(true, feeReceiver, false)
             .appendSendAll(false, feeReceiver, false)

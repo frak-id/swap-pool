@@ -76,7 +76,7 @@ contract MonoPoolSwapViaPermitTest is BaseMonoPoolTest {
         // Build the permit and swap op
         // forgefmt: disable-next-item
         {
-        program = EncoderLib.init(8)
+        program = EncoderLib.init()
                 .appendSwap(true, swapAmount)
                 .appendPermitViaSig(true, swapAmount, deadline, v, r, s);
         }

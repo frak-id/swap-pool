@@ -46,7 +46,7 @@ contract MonoPoolExecuteTest is BaseMonoPoolTest {
     /// @dev Test invalid executor operation
     function test_execute_ko_InvalidOp() public withLiquidity(pool, 100 ether, 100 ether) {
         // Build a random program
-        bytes memory program = EncoderLib.init(3);
+        bytes memory program = EncoderLib.init();
 
         uint256 op = 0xFF;
         assembly {

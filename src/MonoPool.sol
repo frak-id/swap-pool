@@ -159,11 +159,6 @@ contract MonoPool is ReentrancyGuard {
 
         // Initialize the accounter
         Accounter memory accounter;
-        {
-            uint256 hashMapSize;
-            (ptr, hashMapSize) = ptr.readUint(2);
-            accounter.init(hashMapSize);
-        }
 
         // Interpret each operations
         uint256 op;
@@ -256,18 +251,18 @@ contract MonoPool is ReentrancyGuard {
         // If he swap fee cause an overflow, it would be triggered before with the swap amount directly
         unchecked {
             if (zeroForOne && swapFee > 0) {
-                accounter.accountChange(TOKEN_0, delta0 + swapFee.toInt256());
-                accounter.accountChange(TOKEN_1, delta1);
+                accounter.accountChange(true, delta0 + swapFee.toInt256());
+                accounter.accountChange(false, delta1);
                 // Save protocol fee
                 token0State.protocolFees += swapFee;
             } else if (swapFee > 0) {
-                accounter.accountChange(TOKEN_0, delta0);
-                accounter.accountChange(TOKEN_1, delta1 + swapFee.toInt256());
+                accounter.accountChange(true, delta0);
+                accounter.accountChange(false, delta1 + swapFee.toInt256());
                 // Save protocol fee
                 token1State.protocolFees += swapFee;
             } else {
-                accounter.accountChange(TOKEN_0, delta0);
-                accounter.accountChange(TOKEN_1, delta1);
+                accounter.accountChange(true, delta0);
+                accounter.accountChange(false, delta1);
             }
         }
 
@@ -283,7 +278,7 @@ contract MonoPool is ReentrancyGuard {
         // Get the right token depending on the input
         address token;
         TokenState storage tokenState;
-        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
 
         // Get the amount
         uint256 amount;
@@ -309,7 +304,8 @@ contract MonoPool is ReentrancyGuard {
         // Get address & token state
         address token;
         TokenState storage tokenState;
-        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        bool isToken0;
+        (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
 
         // Get receiver & amount
         address to;
@@ -318,7 +314,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, amount) = ptr.readUint(16);
 
         unchecked {
-            accounter.accountChange(token, amount.toInt256());
+            accounter.accountChange(isToken0, amount.toInt256());
             tokenState.totalReserves -= amount;
         }
 
@@ -345,10 +341,11 @@ contract MonoPool is ReentrancyGuard {
         // Get the right token depending on the input
         address token;
         TokenState storage tokenState;
-        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        bool isToken0;
+        (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
 
         // Get the delta for the current accounting
-        int256 delta = accounter.resetChange(token);
+        int256 delta = accounter.resetChange(isToken0);
         if (delta > 0) revert NegativeSend();
 
         // Get the limits
@@ -390,7 +387,8 @@ contract MonoPool is ReentrancyGuard {
         // Get the right token depending on the input
         address token;
         TokenState storage tokenState;
-        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        bool isToken0;
+        (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
 
         // Get the limits
         uint256 minReceive = 0;
@@ -400,7 +398,7 @@ contract MonoPool is ReentrancyGuard {
         if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxReceive) = ptr.readUint(16);
 
         // Get the delta for the current accounting
-        int256 delta = accounter.getChange(token);
+        int256 delta = accounter.getChange(isToken0);
         if (delta < 0) revert NegativeReceive();
 
         // Get the amount to receive
@@ -428,7 +426,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 directBalance = token.balanceOf(address(this));
         uint256 totalReceived = directBalance - reserves;
 
-        accounter.accountChange(token, -totalReceived.toInt256());
+        accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
         tokenState.totalReserves = directBalance;
     }
 
@@ -447,8 +445,8 @@ contract MonoPool is ReentrancyGuard {
 
         (, int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
 
-        accounter.accountChange(TOKEN_0, delta0);
-        accounter.accountChange(TOKEN_1, delta1);
+        accounter.accountChange(true, delta0);
+        accounter.accountChange(false, delta1);
 
         return ptr;
     }
@@ -460,8 +458,8 @@ contract MonoPool is ReentrancyGuard {
 
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
 
-        accounter.accountChange(TOKEN_0, delta0);
-        accounter.accountChange(TOKEN_1, delta1);
+        accounter.accountChange(true, delta0);
+        accounter.accountChange(false, delta1);
 
         return ptr;
     }
@@ -477,11 +475,11 @@ contract MonoPool is ReentrancyGuard {
 
         // Update the state only if he got something to claim
         if (protocolFees0 > 0) {
-            accounter.accountChange(TOKEN_0, -(protocolFees0.toInt256()));
+            accounter.accountChange(true, -(protocolFees0.toInt256()));
             token0State.protocolFees = 0;
         }
         if (protocolFees1 > 0) {
-            accounter.accountChange(TOKEN_1, -(protocolFees1.toInt256()));
+            accounter.accountChange(false, -(protocolFees1.toInt256()));
             token1State.protocolFees = 0;
         }
 
@@ -502,7 +500,7 @@ contract MonoPool is ReentrancyGuard {
         bytes32 r;
         bytes32 s;
 
-        (ptr, token, tokenState) = _getTokenFromBoolInPtr(ptr);
+        (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
         (ptr, amount) = ptr.readUint(16);
         (ptr, deadline) = ptr.readUint(6);
         (ptr, v) = ptr.readUint(1);
@@ -530,9 +528,8 @@ contract MonoPool is ReentrancyGuard {
     function _getTokenFromBoolInPtr(uint256 ptr)
         internal
         view
-        returns (uint256, address token, TokenState storage tokenState)
+        returns (uint256, address token, TokenState storage tokenState, bool isToken0)
     {
-        bool isToken0;
         (ptr, isToken0) = ptr.readBool();
 
         // Get the right token & state depending on the bool
@@ -543,7 +540,7 @@ contract MonoPool is ReentrancyGuard {
             token = TOKEN_1;
             tokenState = token1State;
         }
-        return (ptr, token, tokenState);
+        return (ptr, token, tokenState, isToken0);
     }
 
     /* -------------------------------------------------------------------------- */

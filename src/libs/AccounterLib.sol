@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import { MemMappingLib, MemMapping, MapKVPair } from "./MemMappingLib.sol";
-
-/// @dev Define a struct to hold the accounting state.
 struct Accounter {
-    MemMapping map;
+    int256 token0Change;
+    int256 token1Change;
     uint256 totalNonZero;
 }
 
@@ -17,46 +15,48 @@ using AccounterLib for Accounter global;
 /// @author KONFeature <https://github.com/KONFeature>
 /// @author Modified from (https://github.com/Philogy/singleton-swapper/blob/main/src/libs/AccounterLib.sol) by Philogy
 library AccounterLib {
-    function init(Accounter memory self, uint256 mapSize) internal pure {
-        self.map = MemMappingLib.init(mapSize);
-    }
-
-    /// @notice Register a `change` of `asset` for the current sender, on the current accounting: `self`.
-    function accountChange(Accounter memory self, address asset, int256 change) internal pure {
-        uint256 key = _toKey(asset);
-        MapKVPair pair = self.map.getPair(key);
-        int256 prevTotalChange = int256(pair.value());
+    /// @notice Register a `change` of `isToken0` for the current sender, on the current accounting: `self`.
+    function accountChange(Accounter memory self, bool isToken0, int256 change) internal pure {
+        int256 prevTotalChange;
+        if (isToken0) {
+            prevTotalChange = self.token0Change;
+        } else {
+            prevTotalChange = self.token1Change;
+        }
         int256 newTotalChange = prevTotalChange + change;
 
         if (prevTotalChange == 0) self.totalNonZero++;
         if (newTotalChange == 0) self.totalNonZero--;
 
-        // Unsafe cast to ensure negative numbers can also be stored.
-        pair.set(key, uint256(newTotalChange));
+        if (isToken0) {
+            self.token0Change = newTotalChange;
+        } else {
+            self.token1Change = newTotalChange;
+        }
     }
 
-    /// @notice Reset all the of `asset` for the current sender, on the current accounting: `self`.
+    /// @notice Reset all the of `isToken0` change for the current sender, on the current accounting: `self`.
     /// @return change The total change for the asset that was cleared.
-    function resetChange(Accounter memory self, address asset) internal pure returns (int256 change) {
-        uint256 key = _toKey(asset);
-        MapKVPair pair = self.map.getPair(key);
-        change = int256(pair.value());
+    function resetChange(Accounter memory self, bool isToken0) internal pure returns (int256 change) {
+        // Get the change depending on the token
+        if (isToken0) {
+            change = self.token0Change;
+            self.token0Change = 0;
+        } else {
+            change = self.token1Change;
+            self.token1Change = 0;
+        }
 
+        // If it was non-zero, decrement the totalNonZero
         if (change != 0) self.totalNonZero--;
-
-        pair.set(key, 0);
     }
 
-    /// @notice Get the total change for the current sender on the `asset`, on the current accounting: `self`.
-    function getChange(Accounter memory self, address asset) internal pure returns (int256) {
-        (, uint256 rawValue) = self.map.get(_toKey(asset));
-        return int256(rawValue);
-    }
-
-    /// @dev Map an asset address to a key to be used inside our accounting map.
-    function _toKey(address asset) private pure returns (uint256 k) {
-        assembly ("memory-safe") {
-            k := asset
+    /// @notice Get the total change for the current sender on the `isToken0`, on the current accounting: `self`.
+    function getChange(Accounter memory self, bool isToken0) internal pure returns (int256 change) {
+        if (isToken0) {
+            change = self.token0Change;
+        } else {
+            change = self.token1Change;
         }
     }
 }

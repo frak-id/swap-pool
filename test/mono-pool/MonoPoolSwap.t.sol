@@ -223,7 +223,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     }
 
     /// @dev Fuzz test of swap 0 to 1
-    /*function test_fuzz_swap0To1_ok(uint128 _amount) public {
+    function test_fuzz_swap0To1_ok(uint128 _amount) public {
         uint256 amount = uint256(bound(_amount, 100, 100 ether));
         _swap0to1(pool, amount);
 
@@ -258,8 +258,9 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Ensure the balance has changed
         assertGt(token0.balanceOf(swapUser), 0);
-        // TODO: Why is that KO??
-        // uint256 postSwapBalance = token1.balanceOf(swapUser);
+        uint256 postSwapBalance = token1.balanceOf(swapUser);
+        // TODO: Should ensure strictly equals, new rules in the contracts
         // assertGt(preSwapBalance, postSwapBalance);
-    }*/
+        assertGe(preSwapBalance, postSwapBalance);
+    }
 }
