@@ -82,7 +82,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with direct receive
     function test_swap0to1_ReceiveAll_SendAllLimits_ok() public swap0to1Context {
         vm.pauseGasMetering();
-        uint256 estimateOutput = pool.estimateSwap(swapAmount, true);
+        (uint256 estimateOutput,) = pool.estimateSwap(swapAmount, true);
         vm.resumeGasMetering();
 
         // Build the swap op
@@ -101,7 +101,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with direct receive
     function test_swap0to1_ReceiveAll_SendAllLimits_NativeDst_ok() public swap0to1Context {
         vm.pauseGasMetering();
-        uint256 estimateOutput = pool.estimateSwap(swapAmount, true);
+        (uint256 estimateOutput,) = pool.estimateSwap(swapAmount, true);
         vm.resumeGasMetering();
 
         // Build the swap op
@@ -146,7 +146,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1
     function test_swap0to1_ReceiveDirect_SendDirect_ok() public swap0to1Context {
         // Get the swap output
-        uint256 swapOutput = pool.estimateSwap(swapAmount, true);
+        (uint256 swapOutput,) = pool.estimateSwap(swapAmount, true);
         // Build the swap op
         bytes memory program = _buildSwapViaDirectReceiveAndSend(
             BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser, false, false)
@@ -163,7 +163,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1
     function test_swap0to1_ReceiveDirect_SendDirect_NativeDst_ok() public swap0to1Context {
         // Get the swap output
-        uint256 swapOutput = pool.estimateSwap(swapAmount, true);
+        (uint256 swapOutput,) = pool.estimateSwap(swapAmount, true);
         // Build the swap op
         bytes memory program = _buildSwapViaDirectReceiveAndSend(
             BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser, false, true)
@@ -180,7 +180,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 1 to 0 with wrap
     function test_swap1to0_ReceiveDirect_SendDirect_NativeSrc_ok() public swap1to0Context(false) {
         // Get the swap output
-        uint256 swapOutput = pool.estimateSwap(swapAmount, false);
+        (uint256 swapOutput,) = pool.estimateSwap(swapAmount, false);
         // Build the swap op
         bytes memory program = _buildSwapViaDirectReceiveAndSend(
             BuildSwapWithDirectReceiveAndSend(false, swapAmount, swapOutput, swapUser, true, false)

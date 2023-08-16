@@ -576,18 +576,26 @@ contract MonoPool is ReentrancyGuard {
 
     /// @dev Returns the `amountOut` of token that will be received in exchange of `inAmount` in the direction
     /// `zeroForOne`.
-    function estimateSwap(uint256 inAmount, bool zeroForOne) external view returns (uint256 amountOut) {
+    function estimateSwap(
+        uint256 inAmount,
+        bool zeroForOne
+    )
+        external
+        view
+        returns (uint256 outAmount, uint256 feeAmount)
+    {
         // Deduce the swap fee
-        inAmount -= (protocolFee * inAmount) / PROTOCOL_FEES;
+        feeAmount = (protocolFee * inAmount) / PROTOCOL_FEES;
+        inAmount -= feeAmount;
 
         // Get our pour reservices
         uint256 reserves0 = pool.reserves0;
         uint256 reserves1 = pool.reserves1;
 
         if (zeroForOne) {
-            amountOut = reserves1 - (reserves0 * reserves1) / (reserves0 + inAmount * (BPS - FEE_BPS) / BPS);
+            outAmount = reserves1 - (reserves0 * reserves1) / (reserves0 + inAmount * (BPS - FEE_BPS) / BPS);
         } else {
-            amountOut = reserves0 - (reserves0 * reserves1) / (reserves1 + inAmount * (BPS - FEE_BPS) / BPS);
+            outAmount = reserves0 - (reserves0 * reserves1) / (reserves1 + inAmount * (BPS - FEE_BPS) / BPS);
         }
     }
 }
