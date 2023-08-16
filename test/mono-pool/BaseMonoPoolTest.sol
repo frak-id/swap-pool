@@ -33,8 +33,8 @@ abstract contract BaseMonoPoolTest is Test {
     address internal swapUser;
     uint256 internal swapUserPrivKey;
 
-    /// @dev base bps to use (2%)
-    uint256 internal bps = 200;
+    /// @dev base bps to use (1%)
+    uint256 internal bps = 100;
 
     /// @dev the base protocol fees (2%)
     uint16 internal protocolFee = 200;

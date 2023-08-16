@@ -13,7 +13,7 @@ import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
 
-// Unit for the protocol fees
+// Unit for the protocol fees base (divider for the value)
 uint256 constant PROTOCOL_FEES = 10_000;
 
 /// @title MonoPool
@@ -32,18 +32,6 @@ contract MonoPool is ReentrancyGuard {
 
     /// @dev The max swap fee (5%)
     uint256 private constant MAX_PROTOCOL_FEE = 500;
-
-    /// @dev The min thresholds for the liqidity
-    uint256 private constant MIN_LIQUIDITY_THRESHOLDS = 1000 ether;
-
-    /// @dev The max thresholds for the liqidity
-    uint256 private constant MAX_LIQUIDITY_THRESHOLDS = 1_000_000 ether;
-
-    /// @dev The min dynamic bps fees (0.02%)
-    uint256 private constant MIN_BPS = 2;
-
-    /// @dev The max dynamic bps fees (1%)
-    uint256 private constant MAX_BPS = 100;
 
     /**
      * @dev The token state to handle reserves & protocol fees
