@@ -36,7 +36,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         token0.approve(address(pool), baseAmount);
 
         // Estimate the swap
-        (uint256 estimateOut,) = pool.estimateSwap(baseAmount, true);
+        (uint256 estimateOut,,) = pool.estimateSwap(baseAmount, true);
 
         // Build the swap op
         // forgefmt: disable-next-item
@@ -65,7 +65,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         uint256 baseAmount = 1 ether;
 
         // Estimate the swap
-        (uint256 estimateOut,) = pool.estimateSwap(baseAmount, true);
+        (uint256 estimateOut,,) = pool.estimateSwap(baseAmount, true);
         uint256 lowEstimate = estimateOut * 95 / 100;
         uint256 highEstimate = estimateOut * 105 / 100;
 
@@ -110,7 +110,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         token1.approve(address(pool), baseAmount);
 
         // Estimate the swap
-        (uint256 estimateOut,) = pool.estimateSwap(baseAmount, false);
+        (uint256 estimateOut,,) = pool.estimateSwap(baseAmount, false);
 
         // Build the swap op
         // forgefmt: disable-next-item
@@ -136,7 +136,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         token0.approve(address(pool), baseAmount);
 
         // Estimate the swap
-        (uint256 estimateOut,) = pool.estimateSwap(baseAmount, true);
+        (uint256 estimateOut,,) = pool.estimateSwap(baseAmount, true);
 
         // Build the swap op
         // forgefmt: disable-next-item
@@ -162,7 +162,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         token0.approve(address(pool), baseAmount);
 
         // Estimate the swap
-        (uint256 estimateOut,) = pool.estimateSwap(baseAmount, true);
+        (uint256 estimateOut,,) = pool.estimateSwap(baseAmount, true);
 
         // Build the swap op
         // forgefmt: disable-next-item

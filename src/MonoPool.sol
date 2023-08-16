@@ -582,10 +582,13 @@ contract MonoPool is ReentrancyGuard {
     )
         external
         view
-        returns (uint256 outAmount, uint256 feeAmount)
+        returns (uint256 outAmount, uint256 feeAmount, uint256 lpFee)
     {
-        // Deduce the swap fee
-        feeAmount = (protocolFee * inAmount) / PROTOCOL_FEES;
+        // Compute the liquidity providers fee
+        lpFee = inAmount * FEE_BPS / BPS;
+
+        // Deduce the swap fee from the protocol
+        feeAmount = (inAmount * protocolFee) / PROTOCOL_FEES;
         inAmount -= feeAmount;
 
         // Get our pour reservices
