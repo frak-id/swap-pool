@@ -1,7 +1,0 @@
-{
-  "remappings": ["solady/=lib/solady/src/"],
-  "optimizer": {
-    "enabled": true,
-    "runs": 1000
-  }
-}

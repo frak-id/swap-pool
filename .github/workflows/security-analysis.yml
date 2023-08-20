@@ -45,7 +45,6 @@ jobs:
           solc-version: 0.8.21
           sarif: results.sarif
           fail-on: none
-          target: 'src/'
           slither-config: 'tools/slither.config.json'
 
       - name: "📈 Upload SARIF file report"
