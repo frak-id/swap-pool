@@ -45,12 +45,16 @@ contract MonoPool is ReentrancyGuard {
     /*                                   Storage                                  */
     /* -------------------------------------------------------------------------- */
 
+    // slither-disable-start naming-convention
+
     /// @dev The token's we will use for the pool
     address private immutable TOKEN_0;
     address private immutable TOKEN_1;
 
     /// @dev The fee that will be taken from each swaps
     uint256 private immutable FEE_BPS;
+
+    // slither-disable-end naming-convention
 
     /// @dev The fee that will be taken from each swaps
     uint256 private protocolFee;
@@ -435,7 +439,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, maxAmount0) = ptr.readUint(16);
         (ptr, maxAmount1) = ptr.readUint(16);
 
-        (, int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
+        (int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
 
         accounter.accountChange(delta0, delta1);
 

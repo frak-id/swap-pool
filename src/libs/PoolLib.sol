@@ -58,7 +58,6 @@ library PoolLib {
      * @param to The address of the liquidity provider
      * @param maxAmount0 The maximum amount of token0 to add
      * @param maxAmount1 The maximum amount of token1 to add
-     * @return newLiquidity The amount of liquidity added
      * @return delta0 The amount of token0 added
      * @return delta1 The amount of token1 added
      */
@@ -69,12 +68,13 @@ library PoolLib {
         uint256 maxAmount1
     )
         internal
-        returns (uint256 newLiquidity, int256 delta0, int256 delta1)
+        returns (int256 delta0, int256 delta1)
     {
         uint256 total = self.totalLiquidity;
 
         uint256 amount0;
         uint256 amount1;
+        uint256 newLiquidity;
 
         if (total == 0) {
             newLiquidity = Math.sqrt(maxAmount0 * maxAmount1);
