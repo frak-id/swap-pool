@@ -147,7 +147,7 @@ contract MonoPool is ReentrancyGuard {
         (uint256 ptr, uint256 endPtr) = _getPc(program);
 
         // Initialize the accounter
-        Accounter memory accounter = Accounter(0,0);
+        Accounter memory accounter = Accounter(0, 0);
 
         // Interpret each operations
         uint256 op;
