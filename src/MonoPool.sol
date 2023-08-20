@@ -102,7 +102,8 @@ contract MonoPool is ReentrancyGuard {
         protocolFee = _protocolFee;
     }
 
-    /// @dev Just tell use that this smart contract can receive native tokens
+    /// @dev Just tell that this smart contract can receive native tokens
+    /// @dev The received token will be handled inside a _sync() operation
     receive() external payable {
         // TODO: directly call _accountReceived()?
         // TODO: Native token pool? If yes, how to handle multi wrapped erc20 tokens?
@@ -137,7 +138,6 @@ contract MonoPool is ReentrancyGuard {
      * amount of data while keeping calldata size minimal. It is not reentrant.
      * @param program Serialized list of operations, with each operation consisting of an 8-bit operation specifier and
      * parameters. The structure is as follows:
-     *  2 bytes: accounting hash map size (in tokens) e.g. 0x0040 => up to 64 key, value pairs in the accounting map
      *  For every operation:
      *    1 byte:  8-bit operation (4-bits operation id and 4-bits flags)
      *    n bytes: opcode data
@@ -147,7 +147,7 @@ contract MonoPool is ReentrancyGuard {
         (uint256 ptr, uint256 endPtr) = _getPc(program);
 
         // Initialize the accounter
-        Accounter memory accounter;
+        Accounter memory accounter = Accounter(0,0);
 
         // Interpret each operations
         uint256 op;
@@ -302,6 +302,9 @@ contract MonoPool is ReentrancyGuard {
         (ptr, to) = ptr.readAddress();
         (ptr, amount) = ptr.readUint(16);
 
+        // Register the account changes
+        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint(16)), and
+        // used in uint256 computation
         unchecked {
             accounter.accountChange(isToken0, amount.toInt256());
             tokenState.totalReserves -= amount;
@@ -494,8 +497,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, r) = ptr.readFullBytes();
         (ptr, s) = ptr.readFullBytes();
 
-        // TODO: SOC another contract performing the permit and wrapping operations?
-        // TODO: Like a pre swap hook? Or a pre swap execution layer with dedicated commands?
+        // Perform the permit operation
         ERC20(token).permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
 
         return ptr;
