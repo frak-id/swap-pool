@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: ["main", "security-setup-tools"]
+    branches: ["main"]
 
 # cancel previous runs on the same PR
 concurrency:
-  group: ${{ github.ref }}-tests
+  group: ${{ github.ref }}-analysis
   cancel-in-progress: true
 
 jobs:
