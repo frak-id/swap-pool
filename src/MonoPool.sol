@@ -62,7 +62,7 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The receiver for the swap fees
     address private feeReceiver;
 
-    /// @dev The mapping of all the pools per target token
+    /// @dev The pool managed by this contract
     Pool private pool;
 
     /// @dev The current token state's
@@ -88,6 +88,7 @@ contract MonoPool is ReentrancyGuard {
 
     constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
         require(feeBps < BPS);
+        require(_protocolFee < MAX_PROTOCOL_FEE);
         require(token0 != address(0));
         require(token1 != address(0));
 
@@ -460,7 +461,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the claim fees operation
     function _claimFees(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
-        // Ensure the sender of the message of the fee receiver
+        // Ensure the sender of the message is the fee receiver
         if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
         // Then check each tokens he has to claims
