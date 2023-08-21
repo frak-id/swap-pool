@@ -40,6 +40,33 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
+    /*                               Custom error's                               */
+    /* -------------------------------------------------------------------------- */
+
+    error InvalidOp(uint256 op);
+    error LeftOverDelta();
+    error InvalidGive();
+    error NegativeSend();
+    error NegativeReceive();
+    error AmountOutsideBounds();
+    error NotFeeReceiver();
+    error Swap0Amount();
+    error InvalidAddress();
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Event's                                  */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Event emitted after a swap
+    event Swap(bool zeroForOne, uint256 amountIn);
+
+    /// @dev Event emitted after a liquidity update (addition or suppression)
+    event LiquidityUpdate(address indexed provider, int256 amount0, int256 amount1);
+
+    /// @dev Event emitted after a protocol fee update
+    event ProtocolFeeUpdate(address feesColector, uint256 protocolFee);
+
+    /* -------------------------------------------------------------------------- */
     /*                                   Storage                                  */
     /* -------------------------------------------------------------------------- */
 
@@ -66,20 +93,6 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The current token state's
     TokenState private token0State;
     TokenState private token1State;
-
-    /* -------------------------------------------------------------------------- */
-    /*                               Custom error's                               */
-    /* -------------------------------------------------------------------------- */
-
-    error InvalidOp(uint256 op);
-    error LeftOverDelta();
-    error InvalidGive();
-    error NegativeSend();
-    error NegativeReceive();
-    error AmountOutsideBounds();
-    error NotFeeReceiver();
-    error Swap0Amount();
-    error InvalidAddress();
 
     /* -------------------------------------------------------------------------- */
     /*                                 Constructor                                */
@@ -134,6 +147,9 @@ contract MonoPool is ReentrancyGuard {
 
         feeReceiver = _feeReceiver;
         protocolFee = _protocolFee;
+
+        // Emit event
+        emit ProtocolFeeUpdate(_feeReceiver, _protocolFee);
     }
 
     /**
@@ -242,6 +258,9 @@ contract MonoPool is ReentrancyGuard {
 
         // If we got either of one to 0, revert cause of swapping 0 amount
         if (delta0 == 0 || delta1 == 0) revert Swap0Amount();
+
+        // Emit the swap event
+        emit Swap(zeroForOne, amount);
 
         // Then register the changes (depending on the direction, add the swap fees)
         // We can perform all of this stuff in an uncheck block since all the value has been checked before
@@ -438,9 +457,14 @@ contract MonoPool is ReentrancyGuard {
         (ptr, maxAmount0) = ptr.readUint(16);
         (ptr, maxAmount1) = ptr.readUint(16);
 
+        // Add the liquidity to the pool
         (int256 delta0, int256 delta1) = pool.addLiquidity(msg.sender, maxAmount0, maxAmount1);
 
+        // Register the account changes
         accounter.accountChange(delta0, delta1);
+
+        // Send the event
+        emit LiquidityUpdate(msg.sender, delta0, delta1);
 
         return ptr;
     }
@@ -450,9 +474,14 @@ contract MonoPool is ReentrancyGuard {
         uint256 liq;
         (ptr, liq) = ptr.readFullUint();
 
+        // Remove the liquidity from the pool
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
 
+        // Register the account changes
         accounter.accountChange(delta0, delta1);
+
+        // Send the event
+        emit LiquidityUpdate(msg.sender, delta0, delta1);
 
         return ptr;
     }
