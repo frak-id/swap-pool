@@ -33,13 +33,38 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The max swap fee (5%)
     uint256 private constant MAX_PROTOCOL_FEE = 500;
 
-    /**
-     * @dev The token state to handle reserves & protocol fees
-     */
+    /// @dev The token state to handle reserves & protocol fees
     struct TokenState {
         uint256 totalReserves;
         uint256 protocolFees;
     }
+
+    /* -------------------------------------------------------------------------- */
+    /*                               Custom error's                               */
+    /* -------------------------------------------------------------------------- */
+
+    error InvalidOp(uint256 op);
+    error LeftOverDelta();
+    error InvalidGive();
+    error NegativeSend();
+    error NegativeReceive();
+    error AmountOutsideBounds();
+    error NotFeeReceiver();
+    error Swap0Amount();
+    error InvalidAddress();
+
+    /* -------------------------------------------------------------------------- */
+    /*                                   Event's                                  */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Event emitted after a swap
+    event Swap(bool zeroForOne, uint256 amountIn);
+
+    /// @dev Event emitted after a liquidity update (addition or suppression)
+    event LiquidityUpdate(address indexed provider, int256 amount0, int256 amount1);
+
+    /// @dev Event emitted after a protocol fee update
+    event ProtocolFeeUpdate(address feesColector, uint256 protocolFee);
 
     /* -------------------------------------------------------------------------- */
     /*                                   Storage                                  */
@@ -62,7 +87,7 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The receiver for the swap fees
     address private feeReceiver;
 
-    /// @dev The mapping of all the pools per target token
+    /// @dev The pool managed by this contract
     Pool private pool;
 
     /// @dev The current token state's
@@ -70,24 +95,12 @@ contract MonoPool is ReentrancyGuard {
     TokenState private token1State;
 
     /* -------------------------------------------------------------------------- */
-    /*                               Custom error's                               */
-    /* -------------------------------------------------------------------------- */
-
-    error InvalidOp(uint256 op);
-    error LeftOverDelta();
-    error InvalidGive();
-    error NegativeSend();
-    error NegativeReceive();
-    error AmountOutsideBounds();
-    error NotFeeReceiver();
-    error Swap0Amount();
-
-    /* -------------------------------------------------------------------------- */
     /*                                 Constructor                                */
     /* -------------------------------------------------------------------------- */
 
     constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
         require(feeBps < BPS);
+        require(_protocolFee < MAX_PROTOCOL_FEE);
         require(token0 != address(0));
         require(token1 != address(0));
 
@@ -120,6 +133,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Update the fee receiver and the fee amount
     /// @dev Only the current fee receiver can update the fee receiver and the amount
+    /// @dev The protocol can decide to stop receiving fees, by doing so he need to send the 0 address & 0 protocol fees
     /// @param _feeReceiver The new fee receiver
     /// @param _protocolFee The new fee amount per thousand
     function updateFeeReceiver(address _feeReceiver, uint16 _protocolFee) external {
@@ -133,6 +147,9 @@ contract MonoPool is ReentrancyGuard {
 
         feeReceiver = _feeReceiver;
         protocolFee = _protocolFee;
+
+        // Emit event
+        emit ProtocolFeeUpdate(_feeReceiver, _protocolFee);
     }
 
     /**
@@ -241,6 +258,9 @@ contract MonoPool is ReentrancyGuard {
 
         // If we got either of one to 0, revert cause of swapping 0 amount
         if (delta0 == 0 || delta1 == 0) revert Swap0Amount();
+
+        // Emit the swap event
+        emit Swap(zeroForOne, amount);
 
         // Then register the changes (depending on the direction, add the swap fees)
         // We can perform all of this stuff in an uncheck block since all the value has been checked before
@@ -432,16 +452,19 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the add liquidity operation
     function _addLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
-        address to;
         uint256 maxAmount0;
         uint256 maxAmount1;
-        (ptr, to) = ptr.readAddress();
         (ptr, maxAmount0) = ptr.readUint(16);
         (ptr, maxAmount1) = ptr.readUint(16);
 
-        (int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
+        // Add the liquidity to the pool
+        (int256 delta0, int256 delta1) = pool.addLiquidity(msg.sender, maxAmount0, maxAmount1);
 
+        // Register the account changes
         accounter.accountChange(delta0, delta1);
+
+        // Send the event
+        emit LiquidityUpdate(msg.sender, delta0, delta1);
 
         return ptr;
     }
@@ -451,16 +474,21 @@ contract MonoPool is ReentrancyGuard {
         uint256 liq;
         (ptr, liq) = ptr.readFullUint();
 
+        // Remove the liquidity from the pool
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
 
+        // Register the account changes
         accounter.accountChange(delta0, delta1);
+
+        // Send the event
+        emit LiquidityUpdate(msg.sender, delta0, delta1);
 
         return ptr;
     }
 
     /// @notice Perform the claim fees operation
     function _claimFees(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
-        // Ensure the sender of the message of the fee receiver
+        // Ensure the sender of the message is the fee receiver
         if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
         // Then check each tokens he has to claims

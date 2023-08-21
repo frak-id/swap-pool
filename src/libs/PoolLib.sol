@@ -24,15 +24,13 @@ library PoolLib {
 
     error InsufficientLiquidity();
 
-    /**
-     * @dev Swap tokens in the pool
-     * @param self The pool
-     * @param zeroForOne Whether to swap token0 for token1 or token1 for token0
-     * @param amount The amount of token0 or token1 to swap
-     * @param fee The fee to charge for the liquidity providers
-     * @return delta0 The amount of token0 swapped
-     * @return delta1 The amount of token1 swapped
-     */
+    /// @notice Swap tokens in the pool
+    /// @param self The pool
+    /// @param zeroForOne Whether to swap token0 for token1 or token1 for token0
+    /// @param amount The amount of token0 or token1 to swap
+    /// @param fee The fee to charge for the liquidity providers
+    /// @return delta0 The amount of token0 swapped
+    /// @return delta1 The amount of token1 swapped
     function swap(
         Pool storage self,
         bool zeroForOne,
@@ -52,15 +50,13 @@ library PoolLib {
         self.reserves1 = newReserves1.toUint128();
     }
 
-    /**
-     * @dev Add liquidity to the pool
-     * @param self The pool
-     * @param to The address of the liquidity provider
-     * @param maxAmount0 The maximum amount of token0 to add
-     * @param maxAmount1 The maximum amount of token1 to add
-     * @return delta0 The amount of token0 added
-     * @return delta1 The amount of token1 added
-     */
+    /// @notice Add liquidity to the pool
+    /// @param self The pool
+    /// @param to The address of the liquidity provider
+    /// @param maxAmount0 The maximum amount of token0 to add
+    /// @param maxAmount1 The maximum amount of token1 to add
+    /// @return delta0 The amount of token0 added
+    /// @return delta1 The amount of token1 added
     function addLiquidity(
         Pool storage self,
         address to,
@@ -111,13 +107,11 @@ library PoolLib {
         delta1 = amount1.toInt256();
     }
 
-    /**
-     * @dev Remove liquidity from the pool
-     * @param from The address of the user
-     * @param liquidity The amount of liquidity to remove
-     * @return delta0 The amount of token0 that should be transfered to the user
-     * @return delta1 The amount of token1 that should be transfered to the user
-     */
+    /// @notice Remove liquidity from the pool
+    /// @param from The address of the user
+    /// @param liquidity The amount of liquidity to remove
+    /// @return delta0 The amount of token0 that should be transfered to the user
+    /// @return delta1 The amount of token1 that should be transfered to the user
     function removeLiquidity(
         Pool storage self,
         address from,
