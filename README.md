@@ -2,24 +2,51 @@
 
 A modular Solidity-based solution handling asset swaps within the [Frak](https://frak.id/) ecosystem. Streamlined, secure, and designed with developers in mind.
 
-## Table of Contents 📚
+## Table of Contents 📑
 
-- [Prerequisites](#prerequisites) 🔧
-- [Installation](#installation) 🛠️
-- [How It Works](#how-it-works) 🧠
-- [Contract Structure](#contract-structure) 📜
-- [Credits & Acknowledgments](#credits--acknowledgments) 👏
-- [Features](#features) 🌟
-- [Authors](#authors) 🖋️
-- [License](#license) ⚖️
+1. [Features](#features-)
+2. [Contract Structure](#contract-structure-)
+3. [How It Works](#how-it-works-)
+   - [Internal Flash Accounting](#internal-flash-accounting-)
+   - [Program](#program-)
+   - [Operations](#operations-)
+4. [Supported Operations](#supported-operations-)
+5. [Installation and Usage](#installation--usage-instructions-)
+   - [Prerequisites](#prerequisites)
+   - [Building the Contracts](#building-the-contracts)
+   - [Testing](#testing)
+   - [Coverage Reports](#coverage-reports)
+   - [Gas Consumption Snapshots](#gas-consumption-snapshots)
+   - [Slither Code Analysis](#slither-code-analysis)
+6. [Security Audits](#security-audits-)
+7. [Credits & Acknowledgments](#credits--acknowledgments-)
+8. [Authors](#authors-)
+9. [License](#license-)
 
-## Prerequisites 🔧
+## Features 🌟
 
-To compile and test the contracts, we utilize [foundry](https://github.com/foundry-rs/foundry). Make sure to familiarize yourself with its environment and setup.
+- **Pool Per Contract Mechanism**: Enhanced flexibility by allowing a dedicated pool for each contract.
+- **In-Memory Accounting**: Optimized performance by handling account balances and transactions in memory.
+- **EIP-2612 Permit Signature Support**: Integrated support for EIP-2612 permit signatures, enabling better user experience and security.
 
-## Installation 🛠️
+## Contract Structure 📜
 
-> **Note**: Detailed installation steps will be provided soon.
+```plaintext
+.
+├── MonoPool.sol               - Contract containing a single pool
+├── Ops.sol                    - Contains the list of all available operations (Ops)
+├── lib
+│   ├── AccounterLib.sol       - Library containing the in-memory accounting logic (account changes, get changes, reset changes etc)
+│   ├── PoolLib.sol            - Related to all the pool logic (add/rm liquidity, trigger swap)
+│   └── SwapLib.sol            - Library containing the stuff related to swap operation computation
+├── encoder
+│   ├── DecoderLib.sol         - Helps decode data for each operation
+│   └── EncoderLib.sol         - Assists off-chain users to build their program. Not for on-chain use. (Gas inefficient)
+└── interfaces
+    └── IWrappedNativeToken.sol- Generic interface for the wrapped native token
+```
+
+Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.
 
 ## How It Works 🧠
 
@@ -106,34 +133,77 @@ The `Ops` library delineates all the operations permissible by the swap contract
 For an intricate understanding, consider examining the `Ops` library's source code.
 
 
-## Contract Structure 📜
+## Installation & Usage Instructions 🛠
 
-```plaintext
-.
-├── MonoPool.sol               - Contract containing a single pool
-├── Ops.sol                    - Contains the list of all available operations (Ops)
-├── lib
-│   ├── AccounterLib.sol       - Library containing the in-memory accounting logic (account changes, get changes, reset changes etc)
-│   ├── PoolLib.sol            - Related to all the pool logic (add/rm liquidity, trigger swap)
-│   └── SwapLib.sol            - Library containing the stuff related to swap operation computation
-├── encoder
-│   ├── DecoderLib.sol         - Helps decode data for each operation
-│   └── EncoderLib.sol         - Assists off-chain users to build their program. Not for on-chain use. (Gas inefficient)
-└── interfaces
-    └── IWrappedNativeToken.sol- Generic interface for the wrapped native token
+### Prerequisites
+
+To compile and test the contracts, we utilize [foundry](https://github.com/foundry-rs/foundry). Make sure to familiarize yourself with its environment and setup.
+
+### Building the Smart Contracts
+
+To build all the smart contracts, run:
+
+```bash
+forge build
 ```
 
-Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.
+### Running Tests
+
+To execute all the unit tests, use:
+
+```bash
+forge test
+```
+
+### Checking Test Coverage
+
+To view the coverage of unit tests, run:
+
+```bash
+forge coverage
+```
+
+### Checking Gas Consumption Difference
+
+To assess the differences in gas consumption based on the latest changes, execute:
+
+```bash
+forge snapshot --diff
+```
+
+### Updating Snapshot Report
+
+To update the snapshot report, run:
+
+```bash
+forge snapshot
+```
+
+### Static Analysis with Slither
+
+Before running Slither for code analysis, ensure you have it installed. If not, refer to the official [Slither Documentation](https://github.com/crytic/slither).
+
+Once installed, use the following command to analyze the code:
+
+```bash
+slither --config-file tools/slither.config.json .
+```
+
+## Security Audits 🔒
+
+For transparency and trust, each security audit conducted on our contracts is meticulously documented. We provide details of the auditors, the context or purpose of the audit, the date, and the files covered. Below is a summary of all the audits conducted:
+
+### Audits:
+
+1. **Audit by [nisedo](https://twitter.com/nisedo_) - 20/08/2023**
+   - **Context**: General overview of the project.
+   - **Files Covered**:
+     - `MonoPool.sol`
+   - [View Audit Report](audits/nisedo-20-08-2023.md)
 
 ## Credits & Acknowledgments 👏
 
 We owe a debt of gratitude to the foundational work done by [Philogy](https://github.com/Philogy/singleton-swapper). Our implementation, while unique, has been greatly inspired by or derives from their stellar work on the singleton-swapper repository.
-
-## Features 🌟
-
-- **Pool Per Contract Mechanism**: Enhanced flexibility by allowing a dedicated pool for each contract.
-- **In-Memory Accounting**: Optimized performance by handling account balances and transactions in memory.
-- **EIP-2612 Permit Signature Support**: Integrated support for EIP-2612 permit signatures, enabling better user experience and security.
 
 ## Authors 🖋️
 
