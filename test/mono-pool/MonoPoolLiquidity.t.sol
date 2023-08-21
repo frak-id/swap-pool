@@ -63,7 +63,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // Build the program to execute
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
-            .appendAddLiquidity(liquidityProvider, amountToken0, amountToken1)
+            .appendAddLiquidity(amountToken0, amountToken1)
             .appendReceiveAll(true)
             .appendReceiveAll(false)
             .done();
@@ -92,7 +92,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // Build the program to execute
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
-            .appendAddLiquidity(liquidityProvider, amountToken0, amountToken1)
+            .appendAddLiquidity(amountToken0, amountToken1)
             .appendReceiveAll(true)
             .appendReceiveAll(false)
             .done();
@@ -121,7 +121,7 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // Build the program to execute
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
-            .appendAddLiquidity(liquidityProvider, amountToken0, amountToken1)
+            .appendAddLiquidity(amountToken0, amountToken1)
             .appendReceiveAll(true)
             .done();
 

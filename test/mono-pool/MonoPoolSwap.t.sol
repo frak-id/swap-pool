@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/console.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
+import { SwapLib } from "src/libs/SwapLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
 import { BaseMonoPoolTest } from "./BaseMonoPoolTest.sol";
 
@@ -49,6 +50,16 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = _buildSwapViaAll(true, 1, swapUser, false);
 
         vm.expectRevert(MonoPool.Swap0Amount.selector);
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    /// @dev Test swapping token 0 to token 1 with send and receive all
+    function test_swap0to1_ko_TooLargeSwap() public swap0to1Context {
+        // Build the swap op
+        bytes memory program = _buildSwapViaAll(true, 5000 ether, swapUser, false);
+
+        vm.expectRevert(SwapLib.TooLargeSwap.selector);
         vm.prank(swapUser);
         pool.execute(program);
     }

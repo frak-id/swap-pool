@@ -33,9 +33,7 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The max swap fee (5%)
     uint256 private constant MAX_PROTOCOL_FEE = 500;
 
-    /**
-     * @dev The token state to handle reserves & protocol fees
-     */
+    /// @dev The token state to handle reserves & protocol fees
     struct TokenState {
         uint256 totalReserves;
         uint256 protocolFees;
@@ -81,6 +79,7 @@ contract MonoPool is ReentrancyGuard {
     error AmountOutsideBounds();
     error NotFeeReceiver();
     error Swap0Amount();
+    error InvalidAddress();
 
     /* -------------------------------------------------------------------------- */
     /*                                 Constructor                                */
@@ -121,6 +120,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Update the fee receiver and the fee amount
     /// @dev Only the current fee receiver can update the fee receiver and the amount
+    /// @dev The protocol can decide to stop receiving fees, by doing so he need to send the 0 address & 0 protocol fees
     /// @param _feeReceiver The new fee receiver
     /// @param _protocolFee The new fee amount per thousand
     function updateFeeReceiver(address _feeReceiver, uint16 _protocolFee) external {
@@ -433,14 +433,12 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the add liquidity operation
     function _addLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
-        address to;
         uint256 maxAmount0;
         uint256 maxAmount1;
-        (ptr, to) = ptr.readAddress();
         (ptr, maxAmount0) = ptr.readUint(16);
         (ptr, maxAmount1) = ptr.readUint(16);
 
-        (int256 delta0, int256 delta1) = pool.addLiquidity(to, maxAmount0, maxAmount1);
+        (int256 delta0, int256 delta1) = pool.addLiquidity(msg.sender, maxAmount0, maxAmount1);
 
         accounter.accountChange(delta0, delta1);
 

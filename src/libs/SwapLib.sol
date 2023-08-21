@@ -13,6 +13,7 @@ library SwapLib {
     using SafeCastLib for uint256;
 
     error MathOverflow();
+    error TooLargeSwap();
 
     /// @notice Calculate a swap amount given a pair reserves, direction and feeBps
     function swap(
@@ -37,25 +38,28 @@ library SwapLib {
         }
     }
 
-    /// @notice Calculates the `newX` and `newY` of a pool after swapping `dx` from the current reserve `x` and `y`
+    /// @notice Calculates the `newX` and `newY` of a pool after swapping `amount` from the current reserve `x` and `y`
     /// @notice Applying `feeBps` fee to the pool
+    /// @dev It will also ensure that the user isn't swapping more than the reserves, too prevent too large
+    /// liquidity movment
     function swapXForY(
         uint256 x,
         uint256 y,
-        uint256 dx,
+        uint256 amount,
         uint256 feeBps
     )
         internal
         pure
-        returns (uint256 nx, uint256 ny)
+        returns (uint256 newX, uint256 newY)
     {
         // TODO: Surely more gas opti possible here
         unchecked {
-            if (dx > dx + x) revert MathOverflow();
-            nx = x + dx;
+            if (amount > x) revert TooLargeSwap();
+            if (amount > amount + x) revert MathOverflow();
+            newX = x + amount;
 
-            if (x > x * y || x > x + dx * (BPS - feeBps) / BPS) revert MathOverflow();
-            ny = (x * y) / (x + dx * (BPS - feeBps) / BPS);
+            if (x > x * y || x > x + amount * (BPS - feeBps) / BPS) revert MathOverflow();
+            newY = (x * y) / (x + amount * (BPS - feeBps) / BPS);
         }
     }
 }

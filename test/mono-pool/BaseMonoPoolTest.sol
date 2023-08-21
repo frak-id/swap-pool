@@ -9,7 +9,7 @@ import { MockERC20 } from "test/mock/MockERC20.sol";
 import { MockWrappedNativeERC20 } from "test/mock/MockWrappedNativeERC20.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
-/// @dev Generic contract to test ono pool, providing some helpers
+/// @dev Generic contract to test mono pool, providing some helpers
 /// @author KONFeature <https://github.com/KONFeature>
 abstract contract BaseMonoPoolTest is Test {
     using SafeTransferLib for address;
@@ -117,7 +117,7 @@ abstract contract BaseMonoPoolTest is Test {
         // Build the program to execute
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
-            .appendAddLiquidity(liquidityProvider, amountToken0, amountToken1)
+            .appendAddLiquidity(amountToken0, amountToken1)
             .appendReceiveAll(true)
             .appendReceiveAll(false)
             .done();

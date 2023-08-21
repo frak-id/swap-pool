@@ -68,14 +68,12 @@ library EncoderLib {
     /**
      * @notice Appends the add liquidity operation to the encoded operations
      * @param self The encoded operations
-     * @param to The recipient of the liquidity tokens
      * @param maxAmount0 The maximum amount of baseToken to add
      * @param maxAmount1 The maximum amount of targetToken to add
      * @return program The updated encoded operations
      */
     function appendAddLiquidity(
         bytes memory self,
-        address to,
         uint256 maxAmount0,
         uint256 maxAmount1
     )
@@ -88,15 +86,14 @@ library EncoderLib {
         assembly {
             // Increase the length of the bytes array by 73 bytes
             let length := mload(self)
-            mstore(self, add(length, 53))
+            mstore(self, add(length, 33))
             // Get the address of the start of the new bytes
             let initialOffset := add(add(self, 0x20), length)
 
             // Write the add liquidity operation to the new bytes
             mstore(initialOffset, shl(248, op))
-            mstore(add(initialOffset, 1), shl(96, to))
-            mstore(add(initialOffset, 21), shl(128, maxAmount0))
-            mstore(add(initialOffset, 37), shl(128, maxAmount1))
+            mstore(add(initialOffset, 1), shl(128, maxAmount0))
+            mstore(add(initialOffset, 17), shl(128, maxAmount1))
         }
 
         return self;
