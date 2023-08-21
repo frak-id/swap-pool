@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: "~/.foundry/cache"
-          key: foundry-${{ hashFiles('Makefile', 'foundry.toml') }} 
+          key: foundry-${{ hashFiles('foundry.toml') }} 
       
       - name: '💾 Foundry compilation cache'
         uses: actions/cache@v3
@@ -45,7 +45,7 @@ jobs:
           path: |
             cache
             out
-          key: ${{ github.base_ref || github.ref_name }}-foundry
+          key: foundry-${{ github.repository_id }}-${{ hashFiles('foundry.toml') }}
           
       - name: '🎨 Run lint tests'
         run: forge fmt --check 
