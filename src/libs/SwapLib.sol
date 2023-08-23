@@ -15,6 +15,12 @@ library SwapLib {
     error MathOverflow();
     error TooLargeSwap();
 
+    /// @dev 'bytes4(keccak256("MathOverflow()"))'
+    uint256 private constant _MATH_OVERFLOW_SELECTOR = 0x9d565d4e;
+
+    /// @dev 'bytes4(keccak256("TooLargeSwap()"))'
+    uint256 private constant _TOO_LARGE_SWAP_SELECTOR = 0xa4b94c7d;
+
     /// @notice Calculate a swap amount given a pair reserves, direction and feeBps
     function swap(
         uint256 reserves0,
@@ -52,14 +58,34 @@ library SwapLib {
         pure
         returns (uint256 newX, uint256 newY)
     {
-        // TODO: Surely more gas opti possible here
-        unchecked {
-            if (amount > x) revert TooLargeSwap();
-            if (amount > amount + x) revert MathOverflow();
-            newX = x + amount;
+        assembly {
+            // Ensure the swap isn't too large
+            if gt(amount, x) {
+                mstore(0x00, _TOO_LARGE_SWAP_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+            // Compute the new X
+            newX := add(amount, x)
 
-            if (x > x * y || x > x + amount * (BPS - feeBps) / BPS) revert MathOverflow();
-            newY = (x * y) / (x + amount * (BPS - feeBps) / BPS);
+            // Ensure the math didn't overflow
+            if gt(amount, newX) {
+                mstore(0x00, _MATH_OVERFLOW_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+
+            // xToY = x * y
+            // newXSubFees = x + (amount * (BPS - feeBps)) /  / BPS
+            let xToY := mul(x, y)
+            let newXSubFees := add(x, div(mul(amount, sub(BPS, feeBps)), BPS))
+
+            // Ensure it didn't overflow
+            if or(gt(x, xToY), gt(x, newXSubFees)) {
+                mstore(0x00, _MATH_OVERFLOW_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+
+            // Compute new y reserve (xToY / newXSubFees)
+            newY := div(xToY, newXSubFees)
         }
     }
 }
