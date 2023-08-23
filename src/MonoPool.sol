@@ -121,11 +121,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @dev Just tell that this smart contract can receive native tokens
     /// @dev The received token will be handled inside a _sync() operation
-    receive() external payable {
-        // TODO: directly call _accountReceived()?
-        // TODO: Native token pool? If yes, how to handle multi wrapped erc20 tokens?
-        // TODO: Native token pool with direct handling of native transfer via msg.value diffs?
-    }
+    receive() external payable { }
 
     /* -------------------------------------------------------------------------- */
     /*                           External write method's                          */

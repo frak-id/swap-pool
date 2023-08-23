@@ -59,7 +59,6 @@ contract MonoPoolExecuteTest is BaseMonoPoolTest {
         program.done();
 
         // Try to execute it
-        // TODO: More precise revert with InvalidOp.selector, but how to passe the OP arguments?
         vm.expectRevert();
         pool.execute(program);
     }
