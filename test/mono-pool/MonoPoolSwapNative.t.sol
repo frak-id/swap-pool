@@ -18,42 +18,63 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
     function setUp() public {
         _initBaseMonoPoolTest();
 
-        // Replace token0 by wrapped Token0
-        token0 = wToken0;
-
         // Build our pool
-        pool = new MonoPool(address(wToken0), address(token1), bps, feeReceiver, protocolFee);
+        pool = new MonoPool(address(token0), address(0), bps, feeReceiver, protocolFee);
 
         // Disable protocol fees on it
         _disableProtocolFees(pool);
     }
 
     /// @dev Test swapping token 0 to token 1
-    function test_swap0to1_ok() public withLiquidity(pool, 100 ether, 100 ether) {
-        _swap0to1Native(0.1e18);
+    function test_swap0to1_ok() public withNativeLiquidity(100 ether, 100 ether) {
+        _swap0to1Native(1 ether);
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
 
         // Ensure the user doesn't have token0 anymore
         assertEq(token0.balanceOf(swapUser), 0);
-        assertEq(swapUser.balance, 0);
-        // And that his balance of token 1 has increase
-        assertGt(token1.balanceOf(swapUser), 0);
+        assertGt(swapUser.balance, 0);
     }
 
-    /// @dev Test swapping token 1 to token 0
-    function test_swap1to0_ok() public withLiquidity(pool, 100 ether, 100 ether) {
-        _swap1to0Native(0.1e18);
+    /// @dev Test swapping token 0 to token 1
+    function test_fuzz_swap0to1_ok(uint128 _amount) public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amount = bound(uint256(_amount), 10, 100 ether);
+        _swap0to1Native(amount);
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
 
         // Ensure the user doesn't have token0 anymore
-        assertEq(token1.balanceOf(swapUser), 0);
-        // And that his balance of token 1 has increase
-        assertEq(wToken0.balanceOf(swapUser), 0);
+        assertEq(token0.balanceOf(swapUser), 0);
         assertGt(swapUser.balance, 0);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ok() public withNativeLiquidity(100 ether, 100 ether) {
+        _swap1to0Native(1 ether);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the user doesn't have token0 anymore
+        assertEq(swapUser.balance, 0);
+        // And that his balance of token 1 has increase
+        assertGt(token0.balanceOf(swapUser), 0);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_fuzz_swap1to0_ok(uint128 _amount) public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amount = bound(uint256(_amount), 10, 100 ether);
+        _swap1to0Native(amount);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+
+        // Ensure the user doesn't have token0 anymore
+        assertEq(swapUser.balance, 0);
+        // And that his balance of token 1 has increase
+        assertGt(token0.balanceOf(swapUser), 0);
     }
 
     /* -------------------------------------------------------------------------- */
@@ -62,14 +83,33 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
 
     function _swap0to1Native(uint256 swapAmount) internal {
         // Prank the eth to the user directly
-        vm.deal(swapUser, swapAmount);
+        token0.mint(swapUser, swapAmount);
+        vm.prank(swapUser);
+        token0.approve(address(pool), swapAmount);
 
         // Build the swap op
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendSwap(true, swapAmount)
-            .appendReceiveAllNative(true)
+            .appendReceive(true, swapAmount, false)
             .appendSendAll(false, swapUser, false)
+            .done();
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    function _swap1to0Native(uint256 swapAmount) internal {
+        // Mint token & approve transfer
+        vm.deal(swapUser, swapAmount);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, swapAmount)
+            .appendReceive(false, swapAmount, false)
+            .appendSendAll(true, swapUser, false)
             .done();
 
         // Send it
@@ -77,22 +117,28 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
         pool.execute{ value: swapAmount }(program);
     }
 
-    function _swap1to0Native(uint256 swapAmount) internal {
-        // Mint token & approve transfer
-        token1.mint(swapUser, swapAmount);
-        vm.prank(swapUser);
-        token1.approve(address(pool), swapAmount);
+    modifier withNativeLiquidity(uint256 amount0, uint256 amount1) {
+        // Mint some initial tokens to the liquidity provider
+        token0.mint(liquidityProvider, amount0);
+        vm.deal(liquidityProvider, amount1);
 
-        // Build the swap op
+        // Authorise the pool to spend our tokens
+        vm.startPrank(liquidityProvider);
+        token0.approve(address(pool), amount1);
+        vm.stopPrank();
+
+        // Build the program to execute
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
-            .appendSwap(false, swapAmount)
+            .appendAddLiquidity(amount0, amount1)
+            .appendReceiveAll(true)
             .appendReceiveAll(false)
-            .appendSendAll(true, swapUser, true)
             .done();
 
-        // Send it
-        vm.prank(swapUser);
-        pool.execute(program);
+        // Execute it
+        vm.prank(liquidityProvider);
+        pool.execute{ value: amount1 }(program);
+
+        _;
     }
 }

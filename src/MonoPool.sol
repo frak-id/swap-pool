@@ -288,7 +288,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the receive operation
     function _receive(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
 
@@ -299,10 +299,10 @@ contract MonoPool is ReentrancyGuard {
         // Check if that's a native op or not
         if (op & Ops.NATIVE_TOKEN == 0) {
             // Perform the transfer
-            token.safeTransferFrom(msg.sender, address(this), amount);
+            token.transferFrom(msg.sender, address(this), amount);
         } else {
             // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(token).deposit{ value: amount }();
+            IWrappedNativeToken(Token.unwrap(token)).deposit{ value: amount }();
         }
 
         // Mark the reception state
@@ -314,7 +314,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the send operation
     function _send(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get address & token state
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -336,10 +336,10 @@ contract MonoPool is ReentrancyGuard {
         // Check if that's a native op or not
         if (op & Ops.NATIVE_TOKEN == 0) {
             // Simply transfer the tokens
-            token.safeTransfer(to, amount);
+            token.transfer(to, amount);
         } else {
             // Perform the withdraw of the founds
-            IWrappedNativeToken(address(token)).withdraw(amount);
+            IWrappedNativeToken(Token.unwrap(token)).withdraw(amount);
             // And send them to the recipient
             to.safeTransferETH(amount);
         }
@@ -354,7 +354,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the send all operation
     function _sendAll(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -386,10 +386,10 @@ contract MonoPool is ReentrancyGuard {
         // Check if that's a native op or not
         if (op & Ops.NATIVE_TOKEN == 0) {
             // Simply transfer the tokens
-            token.safeTransfer(to, amount);
+            token.transfer(to, amount);
         } else {
             // Perform the withdraw of the founds
-            IWrappedNativeToken(address(token)).withdraw(amount);
+            IWrappedNativeToken(Token.unwrap(token)).withdraw(amount);
             // And send them to the recipient
             to.safeTransferETH(amount);
         }
@@ -400,7 +400,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the receive all operation
     function _receiveAll(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -423,10 +423,10 @@ contract MonoPool is ReentrancyGuard {
         // Check if that's a native op or not
         if (op & Ops.NATIVE_TOKEN == 0) {
             // Perform the transfer
-            token.safeTransferFrom(msg.sender, address(this), amount);
+            token.transferFrom(msg.sender, address(this), amount);
         } else {
             // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(token).deposit{ value: amount }();
+            IWrappedNativeToken(Token.unwrap(token)).deposit{ value: amount }();
         }
 
         // Mark the reception state
@@ -436,12 +436,14 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /// @dev Function called after we received token from an account, update our total reserve and the account changes
-    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, address token) internal {
+    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, Token token) internal {
         uint256 reserves = tokenState.totalReserves;
-        uint256 directBalance = token.balanceOf(address(this));
+        uint256 directBalance = token.selfBalance();
         uint256 totalReceived = directBalance - reserves;
 
-        accounter.accountChange(token == Token.unwrap(TOKEN_0), -totalReceived.toInt256());
+        // Register the change for either token 0 or 1 (based on the equality check)
+        accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
+        // Increase the total reservices for this token state
         tokenState.totalReserves = directBalance;
     }
 
@@ -513,7 +515,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the permit operation
     function _permitViaSig(uint256 ptr) internal returns (uint256) {
-        address token;
+        Token token;
         TokenState storage tokenState;
         uint256 amount;
         uint256 deadline;
@@ -529,7 +531,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, s) = ptr.readFullBytes();
 
         // Perform the permit operation
-        ERC20(token).permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
+        token.permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
 
         return ptr;
     }
@@ -548,16 +550,16 @@ contract MonoPool is ReentrancyGuard {
     function _getTokenFromBoolInPtr(uint256 ptr)
         internal
         view
-        returns (uint256, address token, TokenState storage tokenState, bool isToken0)
+        returns (uint256, Token token, TokenState storage tokenState, bool isToken0)
     {
         (ptr, isToken0) = ptr.readBool();
 
         // Get the right token & state depending on the bool
         if (isToken0) {
-            token = Token.unwrap(TOKEN_0);
+            token = TOKEN_0;
             tokenState = token0State;
         } else {
-            token = Token.unwrap(TOKEN_1);
+            token = TOKEN_1;
             tokenState = token1State;
         }
         return (ptr, token, tokenState, isToken0);

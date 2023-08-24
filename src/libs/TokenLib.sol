@@ -10,20 +10,53 @@ type Token is address;
 /// @dev Tell to use the lib below for every Token instance
 using TokenLib for Token global;
 
+/// @dev Tell to use the equals functions for the equals operator
+using { equals as == } for Token global;
+
+function equals(Token currency, Token other) pure returns (bool) {
+    return Token.unwrap(currency) == Token.unwrap(other);
+}
+
 /// @title TokenLib
 /// @notice A library for managing a token in the swap pool.
 /// @author KONFeature <https://github.com/KONFeature>
 library TokenLib {
     using SafeTransferLib for address;
 
-    /// @dev Error throwned when the token is the native token
+    /// @dev Error throwned when the token is the native token and we try to perform a permit operation
     error PermitOnNativeToken();
+
+    /// @dev Error throwned when the token is the native token and we try to perform a safe transfer operation
+    error TransferFromOnNativeToken();
 
     /// @dev The native token address
     Token private constant NATIVE = Token.wrap(address(0));
 
     /// @notice Transfer `amount` of `token` to `to`.
-    function transfer(Token self, address to, uint256 amount) internal { }
+    function transfer(Token self, address to, uint256 amount) internal {
+        if (self.isNative()) {
+            // Perform a native transfer of the amount
+            to.safeTransferETH(amount);
+        } else {
+            // Perform the transfer of the token
+            Token.unwrap(self).safeTransfer(to, amount);
+        }
+    }
+
+    /// @notice Transfer `amount` of `token` to `to` from `from`.
+    function transferFrom(Token self, address from, address to, uint256 amount) internal {
+        if (self.isNative()) {
+            // Check if the caller is the from address, and if the amount match the msg.value, if that's the case we can
+            // exit directly
+            if (from == msg.sender && amount == msg.value) return;
+
+            // Otherwise revert since we can take perform a transfer from on native token
+            revert TransferFromOnNativeToken();
+        }
+
+        // Try to perform the transfer
+        Token.unwrap(self).safeTransferFrom(from, to, amount);
+    }
 
     /// @notice Check if the current token is a representation of the native token
     function isNative(Token self) internal pure returns (bool) {
