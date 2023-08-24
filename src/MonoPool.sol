@@ -120,7 +120,9 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /// @dev Just tell that this smart contract can receive native tokens
-    /// @dev The received token will be handled inside a _sync() operation
+    /// @dev The received token will be used iside the _receive() operations
+    /// @dev Any token send to this contract is available for swap by anyone, if it's not send via a native swap
+    /// transaction
     receive() external payable { }
 
     /* -------------------------------------------------------------------------- */
