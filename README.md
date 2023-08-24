@@ -201,6 +201,12 @@ For transparency and trust, each security audit conducted on our contracts is me
      - `MonoPool.sol`
    - [View Audit Report](audits/nisedo-20-08-2023.md)
 
+2. **Audit by [Mlome](https://twitter.com/0xMlome) - 24/08/2023**
+   - **Context**: Brief security audit of the project.
+   - **Files Covered**:
+     ALL
+   - [View Audit Report](audits/Mlome-20-08-2023.md)
+
 ## Credits & Acknowledgments 👏
 
 We owe a debt of gratitude to the foundational work done by [Philogy](https://github.com/Philogy/singleton-swapper). Our implementation, while unique, has been greatly inspired by or derives from their stellar work on the singleton-swapper repository.
