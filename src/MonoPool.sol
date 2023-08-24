@@ -6,6 +6,7 @@ import { SafeCastLib } from "solady/utils/SafeCastLib.sol";
 import { ERC20 } from "solady/tokens/ERC20.sol";
 import { Pool } from "./libs/PoolLib.sol";
 import { Accounter } from "./libs/AccounterLib.sol";
+import { Token } from "./libs/TokenLib.sol";
 import { BPS } from "./libs/SwapLib.sol";
 import { Ops } from "./Ops.sol";
 import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
@@ -73,8 +74,8 @@ contract MonoPool is ReentrancyGuard {
     // slither-disable-start naming-convention
 
     /// @dev The token's we will use for the pool
-    address private immutable TOKEN_0;
-    address private immutable TOKEN_1;
+    Token private immutable TOKEN_0;
+    Token private immutable TOKEN_1;
 
     /// @dev The fee that will be taken from each swaps
     uint256 private immutable FEE_BPS;
@@ -101,8 +102,8 @@ contract MonoPool is ReentrancyGuard {
     constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
         require(feeBps < BPS);
         require(_protocolFee < MAX_PROTOCOL_FEE);
-        require(token0 != address(0));
-        require(token1 != address(0));
+        // We can only have one 0 address (representing native pool)
+        require(token0 != address(0) || token1 != address(0));
 
         // If no fees receiver passed, pass 0 arguments
         if (_feeReceiver == address(0)) {
@@ -111,8 +112,8 @@ contract MonoPool is ReentrancyGuard {
 
         // Save base pool info's
         FEE_BPS = feeBps;
-        TOKEN_0 = token0;
-        TOKEN_1 = token1;
+        TOKEN_0 = Token.wrap(token0);
+        TOKEN_1 = Token.wrap(token1);
 
         // Save info's about protocol receiver
         feeReceiver = _feeReceiver;
@@ -440,7 +441,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 directBalance = token.balanceOf(address(this));
         uint256 totalReceived = directBalance - reserves;
 
-        accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
+        accounter.accountChange(token == Token.unwrap(TOKEN_0), -totalReceived.toInt256());
         tokenState.totalReserves = directBalance;
     }
 
@@ -553,10 +554,10 @@ contract MonoPool is ReentrancyGuard {
 
         // Get the right token & state depending on the bool
         if (isToken0) {
-            token = TOKEN_0;
+            token = Token.unwrap(TOKEN_0);
             tokenState = token0State;
         } else {
-            token = TOKEN_1;
+            token = Token.unwrap(TOKEN_1);
             tokenState = token1State;
         }
         return (ptr, token, tokenState, isToken0);
@@ -567,7 +568,7 @@ contract MonoPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @notice Get the current tokens
-    function getTokens() external view returns (address token0, address token1) {
+    function getTokens() external view returns (Token token0, Token token1) {
         return (TOKEN_0, TOKEN_1);
     }
 

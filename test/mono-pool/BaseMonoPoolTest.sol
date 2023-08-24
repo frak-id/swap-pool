@@ -5,6 +5,7 @@ import "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
+import { Token } from "src/libs/TokenLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
 import { MockWrappedNativeERC20 } from "test/mock/MockWrappedNativeERC20.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -217,7 +218,7 @@ abstract contract BaseMonoPoolTest is Test {
 
     /// @dev Assert that the pool reserve is synced
     function _assertReserveSynced(MonoPool pool) internal outOfGasScope {
-        (address _token0, address _token1) = pool.getTokens();
+        (Token _token0, Token _token1) = pool.getTokens();
         (uint256 reserve0, uint256 reserve1) = pool.getReserves();
         (uint256 pFees0, uint256 pFees1) = pool.getProtocolFees();
         (, uint256 poolReserve0, uint256 poolReserve1) = pool.getPoolState();

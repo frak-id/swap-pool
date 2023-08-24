@@ -26,13 +26,9 @@ contract MonoPoolExecuteTest is BaseMonoPoolTest {
     function test_constructor_ko() public {
         MonoPool constructTest;
 
-        // Case token0 == addr0
+        // Case token0 == addr0 && token1 == addr0
         vm.expectRevert();
-        constructTest = new MonoPool(address(0), address(2), bps, feeReceiver, protocolFee);
-
-        // Case token1 == addr1
-        vm.expectRevert();
-        constructTest = new MonoPool(address(1), address(0), bps, feeReceiver, protocolFee);
+        constructTest = new MonoPool(address(0), address(0), bps, feeReceiver, protocolFee);
 
         // Case BPS > Max BPS
         vm.expectRevert();
