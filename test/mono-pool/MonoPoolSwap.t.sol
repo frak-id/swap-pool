@@ -37,7 +37,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ko_0SwapInput() public swap0to1Context {
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, 0, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, 0, swapUser);
 
         vm.expectRevert(MonoPool.Swap0Amount.selector);
         vm.prank(swapUser);
@@ -47,7 +47,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ko_0SwapOutput() public swap0to1Context {
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, 1, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, 1, swapUser);
 
         vm.expectRevert(MonoPool.Swap0Amount.selector);
         vm.prank(swapUser);
@@ -57,7 +57,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ko_TooLargeSwap() public swap0to1Context {
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, 5000 ether, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, 5000 ether, swapUser);
 
         vm.expectRevert(SwapLib.TooLargeSwap.selector);
         vm.prank(swapUser);
@@ -67,27 +67,14 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ReceiveAll_SendAll_ok() public swap0to1Context {
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
         vm.prank(swapUser);
         pool.execute(program);
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
-        _assertBalancePost0to1(false);
-    }
-
-    /// @dev Test swapping token 0 to token 1 with send and receive all
-    function test_swap0to1_ReceiveAll_SendAll_NativeDst_ok() public swap0to1Context {
-        // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, true);
-
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
+        _assertBalancePost0to1();
     }
 
     /// @dev Test swapping token 0 to token 1 with direct receive
@@ -98,7 +85,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Build the swap op
         bytes memory program = _buildSwapViaAllAndSendLimits(
-            BuildSwapWithAllAndLimitsParams(true, swapAmount, swapUser, false, estimateOutput, estimateOutput)
+            BuildSwapWithAllAndLimitsParams(true, swapAmount, swapUser, estimateOutput, estimateOutput)
         );
 
         vm.prank(swapUser);
@@ -106,52 +93,20 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
-        _assertBalancePost0to1(false);
-    }
-
-    /// @dev Test swapping token 0 to token 1 with direct receive
-    function test_swap0to1_ReceiveAll_SendAllLimits_NativeDst_ok() public swap0to1Context {
-        vm.pauseGasMetering();
-        (uint256 estimateOutput,,) = pool.estimateSwap(swapAmount, true);
-        vm.resumeGasMetering();
-
-        // Build the swap op
-        bytes memory program = _buildSwapViaAllAndSendLimits(
-            BuildSwapWithAllAndLimitsParams(true, swapAmount, swapUser, true, estimateOutput, estimateOutput)
-        );
-
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
+        _assertBalancePost0to1();
     }
 
     /// @dev Test swapping token 0 to token 1 with direct receive
     function test_swap0to1_ReceiveDirect_SendAll_ok() public swap0to1Context {
         // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceive(true, swapAmount, swapUser, false, false);
+        bytes memory program = _buildSwapViaDirectReceive(true, swapAmount, swapUser);
 
         vm.prank(swapUser);
         pool.execute(program);
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
-        _assertBalancePost0to1(false);
-    }
-
-    /// @dev Test swapping token 0 to token 1 with direct receive
-    function test_swap0to1_ReceiveDirect_SendAll_NativeDst_ok() public swap0to1Context {
-        // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceive(true, swapAmount, swapUser, false, true);
-
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
+        _assertBalancePost0to1();
     }
 
     /// @dev Test swapping token 0 to token 1
@@ -159,50 +114,15 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         // Get the swap output
         (uint256 swapOutput,,) = pool.estimateSwap(swapAmount, true);
         // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceiveAndSend(
-            BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser, false, false)
-        );
+        bytes memory program =
+            _buildSwapViaDirectReceiveAndSend(BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser));
 
         vm.prank(swapUser);
         pool.execute(program);
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
-        _assertBalancePost0to1(false);
-    }
-
-    /// @dev Test swapping token 0 to token 1
-    function test_swap0to1_ReceiveDirect_SendDirect_NativeDst_ok() public swap0to1Context {
-        // Get the swap output
-        (uint256 swapOutput,,) = pool.estimateSwap(swapAmount, true);
-        // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceiveAndSend(
-            BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser, false, true)
-        );
-
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
-    }
-
-    /// @dev Test swapping token 1 to 0 with wrap
-    function test_swap1to0_ReceiveDirect_SendDirect_NativeSrc_ok() public swap1to0Context(false) {
-        // Get the swap output
-        (uint256 swapOutput,,) = pool.estimateSwap(swapAmount, false);
-        // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceiveAndSend(
-            BuildSwapWithDirectReceiveAndSend(false, swapAmount, swapOutput, swapUser, true, false)
-        );
-
-        vm.prank(swapUser);
-        pool.execute{ value: swapAmount }(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost1to0();
+        _assertBalancePost0to1();
     }
 
     /* -------------------------------------------------------------------------- */
@@ -219,7 +139,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         token0.approve(address(pool), amount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, false);
+        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -227,28 +147,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
         // Assert the pool are synced
         _assertReserveSynced(pool);
-        _assertBalancePost0to1(false);
-    }
-
-    /// @dev Fuzz test of swap 0 to 1 with a native dst
-    function test_fuzz_swap0To1_NativeDst_ok(uint128 _amount) public {
-        uint256 amount = uint256(bound(_amount, 100, 100 ether));
-
-        // Mint token & approve transfer
-        token0.mint(swapUser, amount);
-        vm.prank(swapUser);
-        token0.approve(address(pool), amount);
-
-        // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, true);
-
-        // Send it
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
+        _assertBalancePost0to1();
     }
 
     /// @dev Fuzz test of swap 0 to 1
@@ -281,52 +180,16 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         assertEq(postSwapBalance, 0);
     }
 
-    /// @dev Fuzz test of swap 0 to 1 with a native dst
-    function test_fuzz_multiSwap_Native_ok(uint128 _amount) public {
-        uint256 amount = uint256(bound(_amount, 100, 100 ether));
-
-        // Mint token & approve transfer
-        token0.mint(swapUser, amount);
-        vm.prank(swapUser);
-        token0.approve(address(pool), amount);
-
-        // Build the swap op
-        bytes memory program = _buildSwapViaDirectReceive(true, amount, swapUser, false, true);
-
-        // Send it
-        vm.prank(swapUser);
-        pool.execute(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost0to1(true);
-
-        amount = swapUser.balance;
-        // Then swap back using native token directly
-        program = _buildSwapViaDirectReceive(false, amount, swapUser, true, false);
-        // Send it
-        vm.prank(swapUser);
-        pool.execute{ value: amount }(program);
-
-        // Assert the pool are synced
-        _assertReserveSynced(pool);
-        _assertBalancePost1to0();
-    }
-
     /* -------------------------------------------------------------------------- */
     /*                          Some generic assertion's                          */
     /* -------------------------------------------------------------------------- */
 
     /// @dev Assert the balance has been updated
-    function _assertBalancePost0to1(bool isNativeDst) internal {
+    function _assertBalancePost0to1() internal {
         // Ensure the user doesn't have token0 anymore
         assertEq(token0.balanceOf(swapUser), 0);
         // And that his balance of token 1 has increase
-        if (isNativeDst) {
-            assertGt(swapUser.balance, 0);
-        } else {
-            assertGt(token1.balanceOf(swapUser), 0);
-        }
+        assertGt(token1.balanceOf(swapUser), 0);
     }
     /// @dev Assert the balance has been updated
 

@@ -9,7 +9,6 @@ import { Accounter } from "./libs/AccounterLib.sol";
 import { Token } from "./libs/TokenLib.sol";
 import { BPS } from "./libs/SwapLib.sol";
 import { Ops } from "./Ops.sol";
-import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
 
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
@@ -120,12 +119,6 @@ contract MonoPool is ReentrancyGuard {
         protocolFee = _protocolFee;
     }
 
-    /// @dev Just tell that this smart contract can receive native tokens
-    /// @dev The received token will be used iside the _receive() operations
-    /// @dev Any token send to this contract is available for swap by anyone, if it's not send via a native swap
-    /// transaction
-    receive() external payable { }
-
     /* -------------------------------------------------------------------------- */
     /*                           External write method's                          */
     /* -------------------------------------------------------------------------- */
@@ -205,10 +198,10 @@ contract MonoPool is ReentrancyGuard {
 
         // Send & Receive op's
         if (mop == Ops.RECEIVE) {
-            return _receive(accounter, ptr, op);
+            return _receive(accounter, ptr);
         }
         if (mop == Ops.SEND) {
-            return _send(accounter, ptr, op);
+            return _send(accounter, ptr);
         }
 
         // Permit helper's
@@ -286,7 +279,7 @@ contract MonoPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the receive operation
-    function _receive(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+    function _receive(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         // Get the right token depending on the input
         Token token;
         TokenState storage tokenState;
@@ -296,14 +289,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount;
         (ptr, amount) = ptr.readUint(16);
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Perform the transfer
-            token.transferFrom(msg.sender, address(this), amount);
-        } else {
-            // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(Token.unwrap(token)).deposit{ value: amount }();
-        }
+        // Perform the transfer
+        token.transferFrom(msg.sender, address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);
@@ -312,7 +299,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /// @notice Perform the send operation
-    function _send(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+    function _send(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         // Get address & token state
         Token token;
         TokenState storage tokenState;
@@ -333,16 +320,8 @@ contract MonoPool is ReentrancyGuard {
             tokenState.totalReserves -= amount;
         }
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Simply transfer the tokens
-            token.transfer(to, amount);
-        } else {
-            // Perform the withdraw of the founds
-            IWrappedNativeToken(Token.unwrap(token)).withdraw(amount);
-            // And send them to the recipient
-            to.safeTransferETH(amount);
-        }
+        // Simply transfer the tokens
+        token.transfer(to, amount);
 
         return ptr;
     }
@@ -383,16 +362,8 @@ contract MonoPool is ReentrancyGuard {
             tokenState.totalReserves -= amount;
         }
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Simply transfer the tokens
-            token.transfer(to, amount);
-        } else {
-            // Perform the withdraw of the founds
-            IWrappedNativeToken(Token.unwrap(token)).withdraw(amount);
-            // And send them to the recipient
-            to.safeTransferETH(amount);
-        }
+        // Simply transfer the tokens
+        token.transfer(to, amount);
 
         return ptr;
     }
@@ -420,14 +391,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount = uint256(delta);
         if (amount < minReceive || amount > maxReceive) revert AmountOutsideBounds();
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Perform the transfer
-            token.transferFrom(msg.sender, address(this), amount);
-        } else {
-            // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(Token.unwrap(token)).deposit{ value: amount }();
-        }
+        // Perform the transfer
+        token.transferFrom(msg.sender, address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);

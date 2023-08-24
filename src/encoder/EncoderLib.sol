@@ -149,21 +149,19 @@ library EncoderLib {
      * @param isToken0 Is the token 0 the target of the send operation
      * @param to The recipient of the tokens
      * @param amount The amount of tokens to send
-     * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
     function appendSend(
         bytes memory self,
         bool isToken0,
         address to,
-        uint256 amount,
-        bool isNative
+        uint256 amount
     )
         internal
         pure
         returns (bytes memory)
     {
-        uint256 op = Ops.SEND | (isNative ? Ops.NATIVE_TOKEN : 0);
+        uint256 op = Ops.SEND;
         assembly {
             let length := mload(self)
             mstore(self, add(length, 38))
@@ -183,20 +181,10 @@ library EncoderLib {
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
      * @param to The recipient of the tokens
-     * @param isNative Is it a native token
      * @return program The updated encoded operations
      */
-    function appendSendAll(
-        bytes memory self,
-        bool isToken0,
-        address to,
-        bool isNative
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        uint256 op = Ops.SEND_ALL | (isNative ? Ops.NATIVE_TOKEN : 0);
+    function appendSendAll(bytes memory self, bool isToken0, address to) internal pure returns (bytes memory) {
+        uint256 op = Ops.SEND_ALL;
         assembly {
             let length := mload(self)
             mstore(self, add(length, 22))
@@ -217,7 +205,6 @@ library EncoderLib {
      * @param to The recipient of the tokens
      * @param minAmount The min amount of token to send
      * @param maxAmount The max amount of token to send
-     * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
     function appendSendAllWithLimits(
@@ -225,14 +212,13 @@ library EncoderLib {
         bool isToken0,
         address to,
         uint256 minAmount,
-        uint256 maxAmount,
-        bool isNative
+        uint256 maxAmount
     )
         internal
         pure
         returns (bytes memory)
     {
-        uint256 op = Ops.SEND_ALL | Ops.ALL_MIN_BOUND | Ops.ALL_MAX_BOUND | (isNative ? Ops.NATIVE_TOKEN : 0);
+        uint256 op = Ops.SEND_ALL | Ops.ALL_MIN_BOUND | Ops.ALL_MAX_BOUND;
         assembly {
             let length := mload(self)
             mstore(self, add(length, 54))
@@ -257,20 +243,10 @@ library EncoderLib {
      * @param self The encoded operations
      * @param isToken0 Is the token 0 the target of the send operation
      * @param amount The amount of tokens to receive
-     * @param isNative Is it a native token to handle
      * @return program The updated encoded operations
      */
-    function appendReceive(
-        bytes memory self,
-        bool isToken0,
-        uint256 amount,
-        bool isNative
-    )
-        internal
-        pure
-        returns (bytes memory)
-    {
-        uint256 op = Ops.RECEIVE | (isNative ? Ops.NATIVE_TOKEN : 0);
+    function appendReceive(bytes memory self, bool isToken0, uint256 amount) internal pure returns (bytes memory) {
+        uint256 op = Ops.RECEIVE;
         assembly {
             let length := mload(self)
             mstore(self, add(length, 18))
@@ -332,26 +308,6 @@ library EncoderLib {
             mstore(add(initialOffset, 1), shl(248, isToken0))
             mstore(add(initialOffset, 2), shl(128, minAmount)) // uint128 -> bytes16
             mstore(add(initialOffset, 18), shl(128, maxAmount)) // uint128 -> bytes16
-        }
-
-        return self;
-    }
-
-    /**
-     * @notice Appends the receive all operation to the encoded operations
-     * @param self The encoded operations
-     * @param isToken0 Is the token 0 the target of the send operation
-     * @return program The updated encoded operations
-     */
-    function appendReceiveAllNative(bytes memory self, bool isToken0) internal pure returns (bytes memory) {
-        uint256 op = Ops.RECEIVE_ALL | Ops.NATIVE_TOKEN;
-        assembly {
-            let length := mload(self)
-            mstore(self, add(length, 2))
-            let initialOffset := add(add(self, 0x20), length)
-
-            mstore(initialOffset, shl(248, op))
-            mstore(add(initialOffset, 1), shl(248, isToken0))
         }
 
         return self;

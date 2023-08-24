@@ -37,7 +37,7 @@ contract MonoPoolSwapViaPermitTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = _initSwapAndPermitProgram(swapAmount)
             .appendReceiveAll(true)
-            .appendSendAll(false, swapUser, false)
+            .appendSendAll(false, swapUser)
             .done();
 
         // Send it

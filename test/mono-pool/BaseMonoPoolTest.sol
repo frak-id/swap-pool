@@ -164,7 +164,7 @@ abstract contract BaseMonoPoolTest is Test {
         token0.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -178,7 +178,7 @@ abstract contract BaseMonoPoolTest is Test {
         token1.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -192,7 +192,7 @@ abstract contract BaseMonoPoolTest is Test {
         token0.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -205,7 +205,7 @@ abstract contract BaseMonoPoolTest is Test {
         token1.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -261,9 +261,7 @@ abstract contract BaseMonoPoolTest is Test {
     function _buildSwapViaDirectReceive(
         bool isSwap0to1,
         uint256 swapAmount,
-        address user,
-        bool isNativeSrc,
-        bool isNativeDst
+        address user
     )
         internal
         pure
@@ -272,8 +270,8 @@ abstract contract BaseMonoPoolTest is Test {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
-            .appendReceive(isSwap0to1, swapAmount, isNativeSrc)
-            .appendSendAll(!isSwap0to1, user, isNativeDst)
+            .appendReceive(isSwap0to1, swapAmount)
+            .appendSendAll(!isSwap0to1, user)
             .done();
     }
 
@@ -282,8 +280,6 @@ abstract contract BaseMonoPoolTest is Test {
         uint256 swapAmount;
         uint256 swapOutput;
         address user;
-        bool isNativeSrc;
-        bool isNativeDst;
     }
 
     /// @dev Build a simple swap program
@@ -295,8 +291,8 @@ abstract contract BaseMonoPoolTest is Test {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
             .appendSwap(params.isSwap0to1, params.swapAmount)
-            .appendReceive(params.isSwap0to1, params.swapAmount, params.isNativeSrc)
-            .appendSend(!params.isSwap0to1, params.user, params.swapOutput, params.isNativeDst)
+            .appendReceive(params.isSwap0to1, params.swapAmount)
+            .appendSend(!params.isSwap0to1, params.user, params.swapOutput)
             .done();
     }
 
@@ -304,8 +300,7 @@ abstract contract BaseMonoPoolTest is Test {
     function _buildSwapViaAll(
         bool isSwap0to1,
         uint256 swapAmount,
-        address user,
-        bool isNativeDst
+        address user
     )
         internal
         pure
@@ -315,7 +310,7 @@ abstract contract BaseMonoPoolTest is Test {
         program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
             .appendReceiveAll(isSwap0to1)
-            .appendSendAll(!isSwap0to1, user, isNativeDst)
+            .appendSendAll(!isSwap0to1, user)
             .done();
     }
 
@@ -323,7 +318,6 @@ abstract contract BaseMonoPoolTest is Test {
         bool isSwap0to1;
         uint256 swapAmount;
         address user;
-        bool isNativeDst;
         uint256 minAmount;
         uint256 maxAmount;
     }
@@ -338,7 +332,7 @@ abstract contract BaseMonoPoolTest is Test {
         program = EncoderLib.init()
             .appendSwap(params.isSwap0to1, params.swapAmount)
             .appendReceiveAll(params.isSwap0to1)
-            .appendSendAllWithLimits(!params.isSwap0to1, params.user, params.minAmount, params.maxAmount, params.isNativeDst)
+            .appendSendAllWithLimits(!params.isSwap0to1, params.user, params.minAmount, params.maxAmount)
             .done();
     }
 

@@ -9,6 +9,10 @@ import { BaseMonoPoolTest } from "./BaseMonoPoolTest.sol";
 
 /// @dev Generic contract to test swap with native token on the mono pool
 /// @author KONFeature <https://github.com/KONFeature>
+/// TODO: Add all possible failing test
+/// TODO: Add test on both side (token0 and token1 as native)
+/// TODO: Add test with multiple op (swap + add liquidity)
+/// TODO: Add test with multiple receive / send / swap in the same op
 contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
     using EncoderLib for bytes;
 
@@ -91,8 +95,8 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendSwap(true, swapAmount)
-            .appendReceive(true, swapAmount, false)
-            .appendSendAll(false, swapUser, false)
+            .appendReceive(true, swapAmount)
+            .appendSendAll(false, swapUser)
             .done();
 
         // Send it
@@ -108,8 +112,8 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendSwap(false, swapAmount)
-            .appendReceive(false, swapAmount, false)
-            .appendSendAll(true, swapUser, false)
+            .appendReceive(false, swapAmount)
+            .appendSendAll(true, swapUser)
             .done();
 
         // Send it

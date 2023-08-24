@@ -40,7 +40,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount, baseAmount)
-                .appendSendAll(false, swapUser, false)
+                .appendSendAll(false, swapUser)
                 .done();
 
         // Send it
@@ -70,7 +70,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount + 1, baseAmount)
-                .appendSendAll(false, swapUser, false)
+                .appendSendAll(false, swapUser)
                 .done();
 
         // Send it
@@ -93,7 +93,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
                 .appendSwap(true, baseAmount)
                 .appendReceiveAllWithLimits(true, baseAmount, baseAmount - 1)
-                .appendSendAll(false, swapUser, false)
+                .appendSendAll(false, swapUser)
                 .done();
 
         // Send it

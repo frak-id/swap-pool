@@ -42,8 +42,6 @@ A modular Solidity-based solution handling asset swaps within the [Frak](https:/
 ├── encoder
 │   ├── DecoderLib.sol         - Helps decode data for each operation
 │   └── EncoderLib.sol         - Assists off-chain users to build their program. Not for on-chain use. (Gas inefficient)
-└── interfaces
-    └── IWrappedNativeToken.sol- Generic interface for the wrapped native token
 ```
 
 Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal gas efficiency.
@@ -79,9 +77,9 @@ Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal
 ### Masks and Flags 🎭
 
 - Flags are used to modify or extend the behavior of an operation. 
-- Masks, like `NATIVE_TOKEN = 0x04`, are used to work with flags. For example:
-  - To set a flag on an operation: `operationCode |= NATIVE_TOKEN`
-  - To check if a flag is set on an operation: `operationCode & NATIVE_TOKEN != 0`
+- Masks, like `SWAP_DIR = 0x01`, are used to work with flags. For example:
+  - To set a flag on an operation: `operationCode |= SWAP_DIR`
+  - To check if a flag is set on an operation: `operationCode & SWAP_DIR != 0`
 
 ## Supported Operations 🔧
 
@@ -125,10 +123,6 @@ The `Ops` library delineates all the operations permissible by the swap contract
   
 - **Maximum Token Amount**:
   - `ALL_MAX_BOUND = 0x02` (with mask `0010`)
-  
-### Handling Native Tokens
-- **Native Token Mask**: Used to manage native tokens, for wrapping or unwrapping. Relevant for all 'SEND' & 'RECEIVE' ops (including 'ALL' variants).
-  - **Mask**: `NATIVE_TOKEN = 0x04` (with mask `0100`)
 
 For an intricate understanding, consider examining the `Ops` library's source code.
 

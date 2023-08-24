@@ -43,7 +43,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
             .appendSwap(true, baseAmount)
             .appendReceiveAll(true)
-            .appendSendAllWithLimits(false, swapUser, estimateOut, estimateOut, false)
+            .appendSendAllWithLimits(false, swapUser, estimateOut, estimateOut)
             .done();
 
         // Send it
@@ -85,7 +85,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
             .appendSwap(true, baseAmount)
             .appendReceiveAll(true)
-            .appendSendAllWithLimits(false, swapUser, lowEstimate, highEstimate, false)
+            .appendSendAllWithLimits(false, swapUser, lowEstimate, highEstimate)
             .done();
 
         // Send it
@@ -117,7 +117,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
             .appendSwap(false, baseAmount)
             .appendReceiveAll(false)
-            .appendSendAllWithLimits(true, swapUser, estimateOut + 1, estimateOut, false)
+            .appendSendAllWithLimits(true, swapUser, estimateOut + 1, estimateOut)
             .done();
 
         // Send it
@@ -143,7 +143,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
             .appendSwap(true, baseAmount)
             .appendReceiveAll(true)
-            .appendSendAllWithLimits(false, swapUser, estimateOut, estimateOut - 1, false)
+            .appendSendAllWithLimits(false, swapUser, estimateOut, estimateOut - 1)
             .done();
 
         // Send it
@@ -168,7 +168,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendSwap(true, baseAmount)
-            .appendSendAllWithLimits(true, swapUser, estimateOut, estimateOut, false)
+            .appendSendAllWithLimits(true, swapUser, estimateOut, estimateOut)
             .done();
 
         // Send it
