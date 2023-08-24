@@ -7,7 +7,6 @@ import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
 import { Token } from "src/libs/TokenLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
-import { MockWrappedNativeERC20 } from "test/mock/MockWrappedNativeERC20.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
 /// @dev Generic contract to test mono pool, providing some helpers
@@ -19,10 +18,6 @@ abstract contract BaseMonoPoolTest is Test {
     /// @dev A few tokens to use for pool construction
     MockERC20 internal token0;
     MockERC20 internal token1;
-
-    /// @dev Wrapped native token
-    MockWrappedNativeERC20 internal wToken0;
-    MockWrappedNativeERC20 internal wToken1;
 
     /// @dev Our liquidity provider user
     address internal liquidityProvider;
@@ -50,9 +45,6 @@ abstract contract BaseMonoPoolTest is Test {
         // Create a few tokens
         token0 = _newToken("token0");
         token1 = _newToken("token1");
-
-        wToken0 = _newWrappedNativeToken("wToken0");
-        wToken1 = _newWrappedNativeToken("wToken1");
     }
 
     /// @dev Disable pool fees
@@ -342,11 +334,6 @@ abstract contract BaseMonoPoolTest is Test {
 
     function _newToken(string memory label) internal returns (MockERC20 newToken) {
         newToken = new MockERC20();
-        vm.label(address(newToken), label);
-    }
-
-    function _newWrappedNativeToken(string memory label) internal returns (MockWrappedNativeERC20 newToken) {
-        newToken = new MockWrappedNativeERC20();
         vm.label(address(newToken), label);
     }
 

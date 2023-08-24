@@ -22,10 +22,8 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     function setUp() public {
         _initBaseMonoPoolTest();
 
-        // Replace token 1 with wrapped token 1
-        token1 = wToken1;
         // Build our pool
-        pool = new MonoPool(address(token0), address(wToken1), bps, feeReceiver, protocolFee);
+        pool = new MonoPool(address(token0), address(token1), bps, feeReceiver, protocolFee);
         // Append a bit of liquidity to the pool
         _addLiquidity(pool, 1000 ether, 300 ether);
     }
@@ -214,17 +212,12 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         _;
     }
 
-    modifier swap1to0Context(bool wrap) {
-        // Add some token 1 to the user
-        if (wrap) {
-            vm.deal(swapUser, swapAmount);
-            wToken1.deposit{ value: swapAmount }();
-            // And directly approve the token 0 to the pool
-            vm.prank(swapUser);
-            token1.approve(address(pool), swapAmount);
-        } else {
-            vm.deal(swapUser, swapAmount);
-        }
+    modifier swap1to0Context() {
+        // Add some token 0 to the user
+        token1.mint(swapUser, swapAmount);
+        // And directly approve the token 0 to the pool
+        vm.prank(swapUser);
+        token1.approve(address(pool), swapAmount);
         _;
     }
 }
