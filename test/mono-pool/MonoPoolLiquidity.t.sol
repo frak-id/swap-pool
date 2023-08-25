@@ -250,8 +250,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendRemoveLiquidity(position / 2)
-            .appendSendAll(true, liquidityProvider, false)
-            .appendSendAll(false, liquidityProvider, false)
+            .appendSendAll(true, liquidityProvider)
+            .appendSendAll(false, liquidityProvider)
             .done();
         // Execute it
         vm.prank(liquidityProvider);
@@ -283,8 +283,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendRemoveLiquidity(position)
-            .appendSendAll(true, liquidityProvider, false)
-            .appendSendAll(false, liquidityProvider, false)
+            .appendSendAll(true, liquidityProvider)
+            .appendSendAll(false, liquidityProvider)
             .done();
         // Execute it
         vm.prank(liquidityProvider);
@@ -312,8 +312,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendRemoveLiquidity(position)
-            .appendSendAll(true, liquidityProvider, false)
-            .appendSendAll(false, liquidityProvider, false)
+            .appendSendAll(true, liquidityProvider)
+            .appendSendAll(false, liquidityProvider)
             .done();
         // Execute it
         vm.prank(liquidityProvider);
@@ -336,8 +336,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendRemoveLiquidity(position + 1)
-            .appendSendAll(true, liquidityProvider, false)
-            .appendSendAll(false, liquidityProvider, false)
+            .appendSendAll(true, liquidityProvider)
+            .appendSendAll(false, liquidityProvider)
             .done();
         // Execute it
         vm.expectRevert(PoolLib.InsufficientLiquidity.selector);
@@ -357,8 +357,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         bytes memory program = EncoderLib.init()
             .appendRemoveLiquidity(pool.getPosition(liquidityProvider) / 10)
             .appendSwap(true, initialLiq0 / 15)
-            .appendSendAll(true, liquidityProvider, false)
-            .appendSendAll(false, liquidityProvider, false)
+            .appendSendAll(true, liquidityProvider)
+            .appendSendAll(false, liquidityProvider)
             .done();
 
         // Execute it

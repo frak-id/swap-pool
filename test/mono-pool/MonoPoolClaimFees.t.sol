@@ -71,8 +71,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendClaimFees()
-            .appendSendAll(true, feeReceiver, false)
-            .appendSendAll(false, feeReceiver, false)
+            .appendSendAll(true, feeReceiver)
+            .appendSendAll(false, feeReceiver)
             .done();
 
         // Send it
@@ -102,8 +102,8 @@ contract MonoPoolLiquidityTest is BaseMonoPoolTest {
         // forgefmt: disable-next-item
         bytes memory program = EncoderLib.init()
             .appendClaimFees()
-            .appendSendAll(true, feeReceiver, false)
-            .appendSendAll(false, feeReceiver, false)
+            .appendSendAll(true, feeReceiver)
+            .appendSendAll(false, feeReceiver)
             .done();
 
         // Send it

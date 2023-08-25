@@ -17,17 +17,17 @@ library AccounterLib {
     /// @notice Register a `change` of `isToken0` for the current sender, on the current accounting: `self`.
     function accountChange(Accounter memory self, bool isToken0, int256 change) internal pure {
         if (isToken0) {
-            self.token0Change += change;
+            self.token0Change = self.token0Change + change;
         } else {
-            self.token1Change += change;
+            self.token1Change = self.token1Change + change;
         }
     }
     /// @notice Register the changes for both token, respectively `token0Change` and `token1Change` for the current
     /// sender, on the current accounting: `self`.
 
     function accountChange(Accounter memory self, int256 token0Change, int256 token1Change) internal pure {
-        self.token0Change += token0Change;
-        self.token1Change += token1Change;
+        self.token0Change = self.token0Change + token0Change;
+        self.token1Change = self.token1Change + token1Change;
     }
 
     /// @notice Reset all the of `isToken0` change for the current sender, on the current accounting: `self`.

@@ -6,9 +6,9 @@ import { SafeCastLib } from "solady/utils/SafeCastLib.sol";
 import { ERC20 } from "solady/tokens/ERC20.sol";
 import { Pool } from "./libs/PoolLib.sol";
 import { Accounter } from "./libs/AccounterLib.sol";
+import { Token } from "./libs/TokenLib.sol";
 import { BPS } from "./libs/SwapLib.sol";
 import { Ops } from "./Ops.sol";
-import { IWrappedNativeToken } from "./interfaces/IWrappedNativeToken.sol";
 
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
@@ -53,6 +53,9 @@ contract MonoPool is ReentrancyGuard {
     error Swap0Amount();
     error InvalidAddress();
 
+    /// @dev 'bytes4(keccak256("Swap0Amount()"))'
+    uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
+
     /* -------------------------------------------------------------------------- */
     /*                                   Event's                                  */
     /* -------------------------------------------------------------------------- */
@@ -73,8 +76,8 @@ contract MonoPool is ReentrancyGuard {
     // slither-disable-start naming-convention
 
     /// @dev The token's we will use for the pool
-    address private immutable TOKEN_0;
-    address private immutable TOKEN_1;
+    Token private immutable TOKEN_0;
+    Token private immutable TOKEN_1;
 
     /// @dev The fee that will be taken from each swaps
     uint256 private immutable FEE_BPS;
@@ -98,11 +101,11 @@ contract MonoPool is ReentrancyGuard {
     /*                                 Constructor                                */
     /* -------------------------------------------------------------------------- */
 
-    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
+    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint256 _protocolFee) payable {
         require(feeBps < BPS);
         require(_protocolFee < MAX_PROTOCOL_FEE);
-        require(token0 != address(0));
-        require(token1 != address(0));
+        // We can only have one 0 address (representing native pool)
+        require(token0 != address(0) || token1 != address(0));
 
         // If no fees receiver passed, pass 0 arguments
         if (_feeReceiver == address(0)) {
@@ -111,17 +114,13 @@ contract MonoPool is ReentrancyGuard {
 
         // Save base pool info's
         FEE_BPS = feeBps;
-        TOKEN_0 = token0;
-        TOKEN_1 = token1;
+        TOKEN_0 = Token.wrap(token0);
+        TOKEN_1 = Token.wrap(token1);
 
         // Save info's about protocol receiver
         feeReceiver = _feeReceiver;
         protocolFee = _protocolFee;
     }
-
-    /// @dev Just tell that this smart contract can receive native tokens
-    /// @dev The received token will be handled inside a _sync() operation
-    receive() external payable { }
 
     /* -------------------------------------------------------------------------- */
     /*                           External write method's                          */
@@ -132,7 +131,7 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The protocol can decide to stop receiving fees, by doing so he need to send the 0 address & 0 protocol fees
     /// @param _feeReceiver The new fee receiver
     /// @param _protocolFee The new fee amount per thousand
-    function updateFeeReceiver(address _feeReceiver, uint16 _protocolFee) external {
+    function updateFeeReceiver(address _feeReceiver, uint256 _protocolFee) external {
         if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
         require(_protocolFee < MAX_PROTOCOL_FEE);
@@ -170,7 +169,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 op;
         while (ptr < endPtr) {
             unchecked {
-                (ptr, op) = ptr.readUint(1);
+                (ptr, op) = ptr.readUint8();
                 ptr = _interpretOp(accounter, ptr, op);
             }
         }
@@ -202,10 +201,10 @@ contract MonoPool is ReentrancyGuard {
 
         // Send & Receive op's
         if (mop == Ops.RECEIVE) {
-            return _receive(accounter, ptr, op);
+            return _receive(accounter, ptr);
         }
         if (mop == Ops.SEND) {
-            return _send(accounter, ptr, op);
+            return _send(accounter, ptr);
         }
 
         // Permit helper's
@@ -235,7 +234,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount;
 
         bool zeroForOne = (op & Ops.SWAP_DIR) != 0;
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
         // If we got a swap fee, deduce it from the amount to swap
         uint256 swapFee;
@@ -253,7 +252,12 @@ contract MonoPool is ReentrancyGuard {
         (delta0, delta1) = pool.swap(zeroForOne, amount, FEE_BPS);
 
         // If we got either of one to 0, revert cause of swapping 0 amount
-        if (delta0 == 0 || delta1 == 0) revert Swap0Amount();
+        assembly {
+            if or(iszero(delta0), iszero(delta1)) {
+                mstore(0x00, _SWAP_0_AMOUNT_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+        }
 
         // Emit the swap event
         emit Swap(zeroForOne, amount);
@@ -265,11 +269,11 @@ contract MonoPool is ReentrancyGuard {
             if (zeroForOne && swapFee > 0) {
                 accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
-                token0State.protocolFees += swapFee;
+                token0State.protocolFees = token0State.protocolFees + swapFee;
             } else if (swapFee > 0) {
                 accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
-                token1State.protocolFees += swapFee;
+                token1State.protocolFees = token1State.protocolFees + swapFee;
             } else {
                 accounter.accountChange(delta0, delta1);
             }
@@ -283,24 +287,18 @@ contract MonoPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the receive operation
-    function _receive(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+    function _receive(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
 
         // Get the amount
         uint256 amount;
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Perform the transfer
-            token.safeTransferFrom(msg.sender, address(this), amount);
-        } else {
-            // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(token).deposit{ value: amount }();
-        }
+        // Perform the transfer
+        token.transferFromSender(address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);
@@ -309,9 +307,9 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /// @notice Perform the send operation
-    function _send(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
+    function _send(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         // Get address & token state
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -320,26 +318,18 @@ contract MonoPool is ReentrancyGuard {
         address to;
         uint256 amount;
         (ptr, to) = ptr.readAddress();
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
         // Register the account changes
-        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint(16)), and
+        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint128()), and
         // used in uint256 computation
         unchecked {
             accounter.accountChange(isToken0, amount.toInt256());
             tokenState.totalReserves -= amount;
         }
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Simply transfer the tokens
-            token.safeTransfer(to, amount);
-        } else {
-            // Perform the withdraw of the founds
-            IWrappedNativeToken(address(token)).withdraw(amount);
-            // And send them to the recipient
-            to.safeTransferETH(amount);
-        }
+        // Simply transfer the tokens
+        token.transfer(to, amount);
 
         return ptr;
     }
@@ -351,7 +341,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the send all operation
     function _sendAll(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -364,8 +354,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 minSend = 0;
         uint256 maxSend = type(uint128).max;
 
-        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minSend) = ptr.readUint(16);
-        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxSend) = ptr.readUint(16);
+        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minSend) = ptr.readUint128();
+        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxSend) = ptr.readUint128();
 
         uint256 amount = uint256(-delta);
         if (amount < minSend || amount > maxSend) revert AmountOutsideBounds();
@@ -380,16 +370,8 @@ contract MonoPool is ReentrancyGuard {
             tokenState.totalReserves -= amount;
         }
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Simply transfer the tokens
-            token.safeTransfer(to, amount);
-        } else {
-            // Perform the withdraw of the founds
-            IWrappedNativeToken(address(token)).withdraw(amount);
-            // And send them to the recipient
-            to.safeTransferETH(amount);
-        }
+        // Simply transfer the tokens
+        token.transfer(to, amount);
 
         return ptr;
     }
@@ -397,7 +379,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the receive all operation
     function _receiveAll(Accounter memory accounter, uint256 ptr, uint256 op) internal returns (uint256) {
         // Get the right token depending on the input
-        address token;
+        Token token;
         TokenState storage tokenState;
         bool isToken0;
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
@@ -406,8 +388,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 minReceive = 0;
         uint256 maxReceive = type(uint128).max;
 
-        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minReceive) = ptr.readUint(16);
-        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxReceive) = ptr.readUint(16);
+        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minReceive) = ptr.readUint128();
+        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxReceive) = ptr.readUint128();
 
         // Get the delta for the current accounting
         int256 delta = accounter.getChange(isToken0);
@@ -417,14 +399,8 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount = uint256(delta);
         if (amount < minReceive || amount > maxReceive) revert AmountOutsideBounds();
 
-        // Check if that's a native op or not
-        if (op & Ops.NATIVE_TOKEN == 0) {
-            // Perform the transfer
-            token.safeTransferFrom(msg.sender, address(this), amount);
-        } else {
-            // Otherwise, in case of a native token, perform the deposit
-            IWrappedNativeToken(token).deposit{ value: amount }();
-        }
+        // Perform the transfer
+        token.transferFromSender(address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);
@@ -433,12 +409,14 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /// @dev Function called after we received token from an account, update our total reserve and the account changes
-    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, address token) internal {
+    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, Token token) internal {
         uint256 reserves = tokenState.totalReserves;
-        uint256 directBalance = token.balanceOf(address(this));
+        uint256 directBalance = token.selfBalance();
         uint256 totalReceived = directBalance - reserves;
 
+        // Register the change for either token 0 or 1 (based on the equality check)
         accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
+        // Increase the total reservices for this token state
         tokenState.totalReserves = directBalance;
     }
 
@@ -450,8 +428,8 @@ contract MonoPool is ReentrancyGuard {
     function _addLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         uint256 maxAmount0;
         uint256 maxAmount1;
-        (ptr, maxAmount0) = ptr.readUint(16);
-        (ptr, maxAmount1) = ptr.readUint(16);
+        (ptr, maxAmount0) = ptr.readUint128();
+        (ptr, maxAmount1) = ptr.readUint128();
 
         // Add the liquidity to the pool
         (int256 delta0, int256 delta1) = pool.addLiquidity(msg.sender, maxAmount0, maxAmount1);
@@ -468,7 +446,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the remove liquidity operation
     function _removeLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         uint256 liq;
-        (ptr, liq) = ptr.readFullUint();
+        (ptr, liq) = ptr.readUint256();
 
         // Remove the liquidity from the pool
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
@@ -510,7 +488,7 @@ contract MonoPool is ReentrancyGuard {
 
     /// @notice Perform the permit operation
     function _permitViaSig(uint256 ptr) internal returns (uint256) {
-        address token;
+        Token token;
         TokenState storage tokenState;
         uint256 amount;
         uint256 deadline;
@@ -519,14 +497,14 @@ contract MonoPool is ReentrancyGuard {
         bytes32 s;
 
         (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
-        (ptr, amount) = ptr.readUint(16);
-        (ptr, deadline) = ptr.readUint(6);
-        (ptr, v) = ptr.readUint(1);
-        (ptr, r) = ptr.readFullBytes();
-        (ptr, s) = ptr.readFullBytes();
+        (ptr, amount) = ptr.readUint128();
+        (ptr, deadline) = ptr.readUint48();
+        (ptr, v) = ptr.readUint8();
+        (ptr, r) = ptr.readBytes32();
+        (ptr, s) = ptr.readBytes32();
 
         // Perform the permit operation
-        ERC20(token).permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
+        token.permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);
 
         return ptr;
     }
@@ -545,7 +523,7 @@ contract MonoPool is ReentrancyGuard {
     function _getTokenFromBoolInPtr(uint256 ptr)
         internal
         view
-        returns (uint256, address token, TokenState storage tokenState, bool isToken0)
+        returns (uint256, Token token, TokenState storage tokenState, bool isToken0)
     {
         (ptr, isToken0) = ptr.readBool();
 
@@ -565,7 +543,7 @@ contract MonoPool is ReentrancyGuard {
     /* -------------------------------------------------------------------------- */
 
     /// @notice Get the current tokens
-    function getTokens() external view returns (address token0, address token1) {
+    function getTokens() external view returns (Token token0, Token token1) {
         return (TOKEN_0, TOKEN_1);
     }
 

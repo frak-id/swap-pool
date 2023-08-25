@@ -5,8 +5,8 @@ import "forge-std/console.sol";
 import { Test } from "forge-std/Test.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
+import { Token } from "src/libs/TokenLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
-import { MockWrappedNativeERC20 } from "test/mock/MockWrappedNativeERC20.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
 
 /// @dev Generic contract to test mono pool, providing some helpers
@@ -18,10 +18,6 @@ abstract contract BaseMonoPoolTest is Test {
     /// @dev A few tokens to use for pool construction
     MockERC20 internal token0;
     MockERC20 internal token1;
-
-    /// @dev Wrapped native token
-    MockWrappedNativeERC20 internal wToken0;
-    MockWrappedNativeERC20 internal wToken1;
 
     /// @dev Our liquidity provider user
     address internal liquidityProvider;
@@ -49,9 +45,6 @@ abstract contract BaseMonoPoolTest is Test {
         // Create a few tokens
         token0 = _newToken("token0");
         token1 = _newToken("token1");
-
-        wToken0 = _newWrappedNativeToken("wToken0");
-        wToken1 = _newWrappedNativeToken("wToken1");
     }
 
     /// @dev Disable pool fees
@@ -163,7 +156,7 @@ abstract contract BaseMonoPoolTest is Test {
         token0.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -177,7 +170,7 @@ abstract contract BaseMonoPoolTest is Test {
         token1.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -191,7 +184,7 @@ abstract contract BaseMonoPoolTest is Test {
         token0.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -204,7 +197,7 @@ abstract contract BaseMonoPoolTest is Test {
         token1.approve(address(pool), swapAmount);
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser, false);
+        bytes memory program = _buildSwapViaAll(false, swapAmount, swapUser);
 
         // Send it
         vm.prank(swapUser);
@@ -217,7 +210,7 @@ abstract contract BaseMonoPoolTest is Test {
 
     /// @dev Assert that the pool reserve is synced
     function _assertReserveSynced(MonoPool pool) internal outOfGasScope {
-        (address _token0, address _token1) = pool.getTokens();
+        (Token _token0, Token _token1) = pool.getTokens();
         (uint256 reserve0, uint256 reserve1) = pool.getReserves();
         (uint256 pFees0, uint256 pFees1) = pool.getProtocolFees();
         (, uint256 poolReserve0, uint256 poolReserve1) = pool.getPoolState();
@@ -260,9 +253,7 @@ abstract contract BaseMonoPoolTest is Test {
     function _buildSwapViaDirectReceive(
         bool isSwap0to1,
         uint256 swapAmount,
-        address user,
-        bool isNativeSrc,
-        bool isNativeDst
+        address user
     )
         internal
         pure
@@ -271,31 +262,27 @@ abstract contract BaseMonoPoolTest is Test {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
-            .appendReceive(isSwap0to1, swapAmount, isNativeSrc)
-            .appendSendAll(!isSwap0to1, user, isNativeDst)
+            .appendReceive(isSwap0to1, swapAmount)
+            .appendSendAll(!isSwap0to1, user)
             .done();
     }
 
-    struct BuildSwapWithDirectReceiveAndSend {
-        bool isSwap0to1;
-        uint256 swapAmount;
-        uint256 swapOutput;
-        address user;
-        bool isNativeSrc;
-        bool isNativeDst;
-    }
-
     /// @dev Build a simple swap program
-    function _buildSwapViaDirectReceiveAndSend(BuildSwapWithDirectReceiveAndSend memory params)
+    function _buildSwapViaDirectReceiveAndSend(
+        bool isSwap0to1,
+        uint256 swapAmount,
+        uint256 swapOutput,
+        address user
+    )
         internal
         pure
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
-            .appendSwap(params.isSwap0to1, params.swapAmount)
-            .appendReceive(params.isSwap0to1, params.swapAmount, params.isNativeSrc)
-            .appendSend(!params.isSwap0to1, params.user, params.swapOutput, params.isNativeDst)
+            .appendSwap(isSwap0to1, swapAmount)
+            .appendReceive(isSwap0to1, swapAmount)
+            .appendSend(!isSwap0to1, user, swapOutput)
             .done();
     }
 
@@ -303,8 +290,7 @@ abstract contract BaseMonoPoolTest is Test {
     function _buildSwapViaAll(
         bool isSwap0to1,
         uint256 swapAmount,
-        address user,
-        bool isNativeDst
+        address user
     )
         internal
         pure
@@ -314,30 +300,27 @@ abstract contract BaseMonoPoolTest is Test {
         program = EncoderLib.init()
             .appendSwap(isSwap0to1, swapAmount)
             .appendReceiveAll(isSwap0to1)
-            .appendSendAll(!isSwap0to1, user, isNativeDst)
+            .appendSendAll(!isSwap0to1, user)
             .done();
     }
 
-    struct BuildSwapWithAllAndLimitsParams {
-        bool isSwap0to1;
-        uint256 swapAmount;
-        address user;
-        bool isNativeDst;
-        uint256 minAmount;
-        uint256 maxAmount;
-    }
-
     /// @dev Build a simple swap program with limits
-    function _buildSwapViaAllAndSendLimits(BuildSwapWithAllAndLimitsParams memory params)
+    function _buildSwapViaAllAndSendLimits(
+        bool isSwap0to1,
+        uint256 swapAmount,
+        address user,
+        uint256 minAmount,
+        uint256 maxAmount
+    )
         internal
         pure
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
-            .appendSwap(params.isSwap0to1, params.swapAmount)
-            .appendReceiveAll(params.isSwap0to1)
-            .appendSendAllWithLimits(!params.isSwap0to1, params.user, params.minAmount, params.maxAmount, params.isNativeDst)
+            .appendSwap(isSwap0to1, swapAmount)
+            .appendReceiveAll(isSwap0to1)
+            .appendSendAllWithLimits(!isSwap0to1, user, minAmount, maxAmount)
             .done();
     }
 
@@ -347,11 +330,6 @@ abstract contract BaseMonoPoolTest is Test {
 
     function _newToken(string memory label) internal returns (MockERC20 newToken) {
         newToken = new MockERC20();
-        vm.label(address(newToken), label);
-    }
-
-    function _newWrappedNativeToken(string memory label) internal returns (MockWrappedNativeERC20 newToken) {
-        newToken = new MockWrappedNativeERC20();
         vm.label(address(newToken), label);
     }
 
