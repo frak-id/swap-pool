@@ -92,6 +92,9 @@ library TokenLib {
         if (self.isNative()) revert PermitOnNativeToken();
 
         // Try to perform the permit operation
+        // slither-disable-next-line calls-loop: Disable Slither warning about the loop, cause in case of a pool with 2
+        // erc20 implementing eip2612, a user can decide to use a signature approval when adding liquidity to both
+        // tokens
         ERC20(Token.unwrap(self)).permit(owner, spender, value, deadline, v, r, s);
     }
 }

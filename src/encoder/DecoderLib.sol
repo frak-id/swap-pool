@@ -37,15 +37,6 @@ library DecoderLib {
         }
     }
 
-    /// @dev Reads a bytes from an encoded program, `self`, encoded on `size` bytes
-    function readBytes(uint256 self, uint256 size) internal pure returns (uint256 newPtr, bytes32 x) {
-        require(size >= 1 && size <= 32);
-        assembly ("memory-safe") {
-            newPtr := add(self, size)
-            x := shr(shl(3, sub(32, size)), calldataload(self))
-        }
-    }
-
     /// @dev Reads a bytes from an encoded program: `self`, encoded on 32 bytes
     function readFullBytes(uint256 self) internal pure returns (uint256 newPtr, bytes32 x) {
         assembly ("memory-safe") {
