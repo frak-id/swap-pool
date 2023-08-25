@@ -8,6 +8,7 @@ A modular Solidity-based solution handling asset swaps within the [Frak](https:/
 2. [Contract Structure](#contract-structure-)
 3. [How It Works](#how-it-works-)
    - [Internal Flash Accounting](#internal-flash-accounting-)
+   - [Unified Token Management](#unified-token-management-)
    - [Program](#program-)
    - [Operations](#operations-)
 4. [Supported Operations](#supported-operations-)
@@ -28,6 +29,7 @@ A modular Solidity-based solution handling asset swaps within the [Frak](https:/
 - **Pool Per Contract Mechanism**: Enhanced flexibility by allowing a dedicated pool for each contract.
 - **In-Memory Accounting**: Optimized performance by handling account balances and transactions in memory.
 - **EIP-2612 Permit Signature Support**: Integrated support for EIP-2612 permit signatures, enabling better user experience and security.
+- **Unified Token Abstraction**: With the new `TokenLib.sol`, seamlessly manage both ERC-20 tokens and native chain tokens using a singular user-defined value type.
 
 ## Contract Structure 📜
 
@@ -38,7 +40,8 @@ A modular Solidity-based solution handling asset swaps within the [Frak](https:/
 ├── lib
 │   ├── AccounterLib.sol       - Library containing the in-memory accounting logic (account changes, get changes, reset changes etc)
 │   ├── PoolLib.sol            - Related to all the pool logic (add/rm liquidity, trigger swap)
-│   └── SwapLib.sol            - Library containing the stuff related to swap operation computation
+│   ├── SwapLib.sol            - Library containing the stuff related to swap operation computation
+│   └── TokenLib.sol           - Unified token type for ERC-20 and native tokens abstraction
 ├── encoder
 │   ├── DecoderLib.sol         - Helps decode data for each operation
 │   └── EncoderLib.sol         - Assists off-chain users to build their program. Not for on-chain use. (Gas inefficient)
@@ -50,10 +53,16 @@ Always remember: Use `EncoderLib` exclusively in off-chain scenarios for optimal
 
 ### Internal Flash Accounting 💡
 
-- The pool employs an internal accounting system to keep track of balance changes for two specific tokens, namely `token0` and `token1`, during the course of a transaction block (flash execution).
+- The pool employs an internal accounting system to keep track of balance changes for two specific tokens, namely `token0` and `token1`, during the course of a transaction block (flash execution). This seamless tracking is possible thanks to the abstraction provided by the `TokenLib.sol`.
 - Instead of making changes to the Ethereum state immediately, the contract first tracks net balance changes internally.
 - After all operations have been executed, the contract then applies the final net changes to the actual balances of `token0` and `token1` at the end of the transaction block.
 - This approach aims to minimize gas usage, as frequent state changes (storage operations) are generally costly in terms of gas.
+
+### Unified Token Management 🪙
+
+- With the new `TokenLib.sol`, the system has a built-in abstraction layer to handle both ERC-20 tokens and native tokens (represented by the address 0).
+- This allows for seamless transfers and balance checks for both ERC-20 and native chain tokens.
+- Whether interacting with ERC-20's `transfer()` and `balanceOf()` or native chain operations, the underlying logic remains abstracted, reducing complexity and potential errors.
 
 ### Program 📜
 
