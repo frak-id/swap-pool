@@ -267,24 +267,22 @@ abstract contract BaseMonoPoolTest is Test {
             .done();
     }
 
-    struct BuildSwapWithDirectReceiveAndSend {
-        bool isSwap0to1;
-        uint256 swapAmount;
-        uint256 swapOutput;
-        address user;
-    }
-
     /// @dev Build a simple swap program
-    function _buildSwapViaDirectReceiveAndSend(BuildSwapWithDirectReceiveAndSend memory params)
+    function _buildSwapViaDirectReceiveAndSend(
+        bool isSwap0to1,
+        uint256 swapAmount,
+        uint256 swapOutput,
+        address user
+    )
         internal
         pure
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
-            .appendSwap(params.isSwap0to1, params.swapAmount)
-            .appendReceive(params.isSwap0to1, params.swapAmount)
-            .appendSend(!params.isSwap0to1, params.user, params.swapOutput)
+            .appendSwap(isSwap0to1, swapAmount)
+            .appendReceive(isSwap0to1, swapAmount)
+            .appendSend(!isSwap0to1, user, swapOutput)
             .done();
     }
 
@@ -306,25 +304,23 @@ abstract contract BaseMonoPoolTest is Test {
             .done();
     }
 
-    struct BuildSwapWithAllAndLimitsParams {
-        bool isSwap0to1;
-        uint256 swapAmount;
-        address user;
-        uint256 minAmount;
-        uint256 maxAmount;
-    }
-
     /// @dev Build a simple swap program with limits
-    function _buildSwapViaAllAndSendLimits(BuildSwapWithAllAndLimitsParams memory params)
+    function _buildSwapViaAllAndSendLimits(
+        bool isSwap0to1,
+        uint256 swapAmount,
+        address user,
+        uint256 minAmount,
+        uint256 maxAmount
+    )
         internal
         pure
         returns (bytes memory program)
     {
         // forgefmt: disable-next-item
         program = EncoderLib.init()
-            .appendSwap(params.isSwap0to1, params.swapAmount)
-            .appendReceiveAll(params.isSwap0to1)
-            .appendSendAllWithLimits(!params.isSwap0to1, params.user, params.minAmount, params.maxAmount)
+            .appendSwap(isSwap0to1, swapAmount)
+            .appendReceiveAll(isSwap0to1)
+            .appendSendAllWithLimits(!isSwap0to1, user, minAmount, maxAmount)
             .done();
     }
 

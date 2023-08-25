@@ -9,10 +9,6 @@ import { BaseMonoPoolTest } from "./BaseMonoPoolTest.sol";
 
 /// @dev Generic contract to test swap with native token on the mono pool
 /// @author KONFeature <https://github.com/KONFeature>
-/// TODO: Add all possible failing test
-/// TODO: Add test on both side (token0 and token1 as native)
-/// TODO: Add test with multiple op (swap + add liquidity)
-/// TODO: Add test with multiple receive / send / swap in the same op
 contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
     using EncoderLib for bytes;
 
@@ -83,6 +79,167 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
         assertEq(swapUser.balance, 0);
         // And that his balance of token 1 has increase
         assertGt(token0.balanceOf(swapUser), 0);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ko_InsuficiantFunds() public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amount = 0.1 ether;
+
+        // Mint token & approve transfer
+        vm.deal(swapUser, amount);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, amount)
+            .appendReceive(false, amount)
+            .appendSendAll(true, swapUser)
+            .done();
+
+        // Send it
+        vm.expectRevert(MonoPool.LeftOverDelta.selector);
+        vm.prank(swapUser);
+        pool.execute{ value: amount - 1 }(program);
+
+        // Ensure the user balance hasn't changes
+        assertEq(swapUser.balance, amount);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ok_SeparatedReceive() public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amountFirst = 0.1 ether;
+        uint256 amountSecond = 0.3 ether;
+
+        // Mint token & approve transfer
+        vm.deal(swapUser, amountFirst + amountSecond);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, amountFirst + amountSecond)
+            .appendReceive(false, amountFirst)
+            .appendReceive(false, amountSecond)
+            .appendSendAll(true, swapUser)
+            .done();
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute{ value: amountFirst + amountSecond }(program);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ok_SeparatedReceiveWithNoValue() public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amountFirst = 0.1 ether;
+        uint256 amountSecond = 0.3 ether;
+
+        // Mint token & approve transfer
+        vm.deal(swapUser, amountFirst + amountSecond);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, amountFirst + amountSecond)
+            .appendReceive(false, 1)
+            .appendSendAll(true, swapUser)
+            .done();
+
+        // Send it
+        vm.prank(swapUser);
+        pool.execute{ value: amountFirst + amountSecond }(program);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ko_TooMuchFunds() public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amount = 0.1 ether;
+
+        // Mint token & approve transfer
+        vm.deal(swapUser, amount * 2);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, amount)
+            .appendReceive(false, amount)
+            .appendSendAll(true, swapUser)
+            .done();
+
+        // Send it
+        vm.expectRevert(MonoPool.LeftOverDelta.selector);
+        vm.prank(swapUser);
+        pool.execute{ value: amount + 1 }(program);
+    }
+
+    /// @dev Test swapping token 1 to token 0
+    function test_swap1to0_ko_NotEnoughValue() public withNativeLiquidity(100 ether, 100 ether) {
+        uint256 amount = 0.1 ether;
+
+        // Mint token & approve transfer
+        vm.deal(swapUser, amount * 2);
+
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwap(false, amount)
+            .appendSwap(false, amount)
+            .appendReceive(false, amount)
+            .appendSendAll(true, swapUser)
+            .done();
+
+        // Send it
+        vm.expectRevert(MonoPool.LeftOverDelta.selector);
+        vm.prank(swapUser);
+        pool.execute{ value: amount }(program);
+    }
+
+    /* -------------------------------------------------------------------------- */
+    /*                            Some liquidity test's                           */
+    /* -------------------------------------------------------------------------- */
+
+    /// @dev Test removing liquidity liquidity
+    function test_removeNativeLiq_ok() public withNativeLiquidity(100 ether, 100 ether) {
+        // Get the initial pool reserves
+        (uint256 initReserve0, uint256 initReserve1) = pool.getReserves();
+
+        // Perform a few swap's in a for loop of 50 iteration
+        {
+            vm.pauseGasMetering();
+            for (uint256 i = 0; i < 50; i++) {
+                _swap0to1Native(1 ether);
+                _swap1to0Native(1 ether);
+            }
+            vm.resumeGasMetering();
+        }
+
+        // Get the new pool reserves
+        (uint256 newReserve0, uint256 newReserve1) = pool.getReserves();
+
+        // Ensure the reserve has increase
+        assertGt(newReserve0, initReserve0);
+        assertGt(newReserve1, initReserve1);
+
+        // Withdraw the liquidity owner position
+        {
+            // Build the program to execute
+            // forgefmt: disable-next-item
+            bytes memory program = EncoderLib.init()
+                .appendRemoveLiquidity(pool.getPosition(liquidityProvider))
+                .appendSendAll(true, liquidityProvider)
+                .appendSendAll(false, liquidityProvider)
+                .done();
+
+            // Execute it
+            vm.prank(liquidityProvider);
+            pool.execute(program);
+        }
+
+        // Ensure the reserve has decrease
+        (uint256 finalReserve0, uint256 finalReserve1) = pool.getReserves();
+        assertLt(finalReserve0, newReserve0);
+        assertLt(finalReserve1, newReserve1);
+
+        // Ensure the balance of our liquidity provider his more than what he inserted in the pool
+        assertGt(token0.balanceOf(liquidityProvider), initReserve0);
+        assertGt(liquidityProvider.balance, initReserve1);
     }
 
     /* -------------------------------------------------------------------------- */

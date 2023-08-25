@@ -82,9 +82,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         vm.resumeGasMetering();
 
         // Build the swap op
-        bytes memory program = _buildSwapViaAllAndSendLimits(
-            BuildSwapWithAllAndLimitsParams(true, swapAmount, swapUser, estimateOutput, estimateOutput)
-        );
+        bytes memory program = _buildSwapViaAllAndSendLimits(true, swapAmount, swapUser, estimateOutput, estimateOutput);
 
         vm.prank(swapUser);
         pool.execute(program);
@@ -112,8 +110,7 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         // Get the swap output
         (uint256 swapOutput,,) = pool.estimateSwap(swapAmount, true);
         // Build the swap op
-        bytes memory program =
-            _buildSwapViaDirectReceiveAndSend(BuildSwapWithDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser));
+        bytes memory program = _buildSwapViaDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser);
 
         vm.prank(swapUser);
         pool.execute(program);
