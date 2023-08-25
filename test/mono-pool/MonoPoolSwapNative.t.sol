@@ -29,6 +29,10 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
         _disableProtocolFees(pool);
     }
 
+    /* -------------------------------------------------------------------------- */
+    /*                             Simple swap test's                             */
+    /* -------------------------------------------------------------------------- */
+
     /// @dev Test swapping token 0 to token 1
     function test_swap0to1_ok() public withNativeLiquidity(100 ether, 100 ether) {
         _swap0to1Native(1 ether);

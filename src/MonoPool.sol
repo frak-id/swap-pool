@@ -290,7 +290,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, amount) = ptr.readUint(16);
 
         // Perform the transfer
-        token.transferFrom(msg.sender, address(this), amount);
+        token.transferFromSender(address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);
@@ -392,7 +392,7 @@ contract MonoPool is ReentrancyGuard {
         if (amount < minReceive || amount > maxReceive) revert AmountOutsideBounds();
 
         // Perform the transfer
-        token.transferFrom(msg.sender, address(this), amount);
+        token.transferFromSender(address(this), amount);
 
         // Mark the reception state
         _accountReceived(accounter, tokenState, token);

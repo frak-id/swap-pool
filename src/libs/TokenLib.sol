@@ -43,19 +43,13 @@ library TokenLib {
         }
     }
 
-    /// @notice Transfer `amount` of `token` to `to` from `from`.
-    function transferFrom(Token self, address from, address to, uint256 amount) internal {
-        if (self.isNative()) {
-            // Check if the caller is the from address, and if the amount match the msg.value, if that's the case we can
-            // exit directly
-            if (from == msg.sender && amount == msg.value) return;
-
-            // Otherwise revert since we can take perform a transfer from on native token
-            revert TransferFromOnNativeToken();
-        }
+    /// @notice Transfer `amount` of `token` to `to` from `msg.sender`.
+    function transferFromSender(Token self, address to, uint256 amount) internal {
+        // If we are in the case of a native token, nothing to do
+        if (self.isNative()) return;
 
         // Try to perform the transfer
-        Token.unwrap(self).safeTransferFrom(from, to, amount);
+        Token.unwrap(self).safeTransferFrom(msg.sender, to, amount);
     }
 
     /// @notice Check if the current token is a representation of the native token
