@@ -56,7 +56,6 @@ contract MonoPool is ReentrancyGuard {
     /// @dev 'bytes4(keccak256("Swap0Amount()"))'
     uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
 
-
     /* -------------------------------------------------------------------------- */
     /*                                   Event's                                  */
     /* -------------------------------------------------------------------------- */
@@ -352,7 +351,7 @@ contract MonoPool is ReentrancyGuard {
         if (delta > 0) revert NegativeSend();
 
         // Get the limits
-        uint256 minSend;
+        uint256 minSend = 0;
         uint256 maxSend = type(uint128).max;
 
         if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minSend) = ptr.readUint128();
@@ -386,7 +385,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
 
         // Get the limits
-        uint256 minReceive;
+        uint256 minReceive = 0;
         uint256 maxReceive = type(uint128).max;
 
         if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minReceive) = ptr.readUint128();

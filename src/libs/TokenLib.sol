@@ -11,14 +11,21 @@ type Token is address;
 using TokenLib for Token global;
 
 /// @dev Tell to use the equals functions for the equals operator
-using { equals as == } for Token global;
+using { unsafeEquals as == } for Token global;
 
-function equals(Token currency, Token other) pure returns (bool) {
-    return Token.unwrap(currency) == Token.unwrap(other);
+/// @notice Check if a token equals another
+/// @dev Mark it as unsafe since we don't have any upper byte protection
+function unsafeEquals(Token self, Token other) pure returns (bool isEquals) {
+    assembly {
+        // Warn, no upper byte protection here
+        isEquals := eq(self, other)
+    }
 }
 
 /// @title TokenLib
 /// @notice A library for managing a token in the swap pool.
+/// @dev This lib can also handle native token
+/// @dev A native token is represented by the address(0)
 /// @author KONFeature <https://github.com/KONFeature>
 library TokenLib {
     using SafeTransferLib for address;
@@ -26,11 +33,15 @@ library TokenLib {
     /// @dev Error throwned when the token is the native token and we try to perform a permit operation
     error PermitOnNativeToken();
 
-    /// @dev Error throwned when the token is the native token and we try to perform a safe transfer operation
-    error TransferFromOnNativeToken();
+    /// @dev 'bytes4(keccak256("PermitOnNativeToken()"))'
+    uint256 private constant _PERMIT_ON_NATIVE_TOKEN_SELECTOR = 0x5d478b89;
 
-    /// @dev The native token address
-    Token private constant NATIVE = Token.wrap(address(0));
+    /// @notice Check if the current token is a representation of the native token
+    function isNative(Token self) internal pure returns (bool isSelfNative) {
+        assembly {
+            isSelfNative := iszero(self)
+        }
+    }
 
     /// @notice Transfer `amount` of `token` to `to`.
     function transfer(Token self, address to, uint256 amount) internal {
@@ -52,26 +63,51 @@ library TokenLib {
         Token.unwrap(self).safeTransferFrom(msg.sender, to, amount);
     }
 
-    /// @notice Check if the current token is a representation of the native token
-    function isNative(Token self) internal pure returns (bool) {
-        return Token.unwrap(self) == Token.unwrap(NATIVE);
-    }
-
     /// @notice Get the current balance of the caller
-    function selfBalance(Token self) internal view returns (uint256) {
-        if (self.isNative()) {
-            return address(this).balance;
-        } else {
-            return Token.unwrap(self).balanceOf(address(this));
+    function selfBalance(Token self) internal view returns (uint256 amount) {
+        assembly {
+            switch self
+            case 0 {
+                // Get the self balance directly in case of native token
+                amount := selfbalance()
+            }
+            default {
+                // Otherwise, get balance from the token
+                mstore(0x14, address()) // Store the `account` argument.
+                mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
+                amount :=
+                    mul(
+                        mload(0x20),
+                        and( // The arguments of `and` are evaluated from right to left.
+                            gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                            staticcall(gas(), self, 0x10, 0x24, 0x20, 0x20)
+                        )
+                    )
+            }
         }
     }
 
     /// @notice Get the current balance of `owner`
-    function balanceOf(Token self, address owner) internal view returns (uint256) {
-        if (self.isNative()) {
-            return owner.balance;
-        } else {
-            return Token.unwrap(self).balanceOf(owner);
+    function balanceOf(Token self, address owner) internal view returns (uint256 amount) {
+        assembly {
+            switch self
+            case 0 {
+                // Get the native balance of the owner in case of native token
+                amount := balance(owner)
+            }
+            default {
+                // Otherwise, get balance from the token
+                mstore(0x14, owner) // Store the `account` argument.
+                mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
+                amount :=
+                    mul(
+                        mload(0x20),
+                        and( // The arguments of `and` are evaluated from right to left.
+                            gt(returndatasize(), 0x1f), // At least 32 bytes returned.
+                            staticcall(gas(), self, 0x10, 0x24, 0x20, 0x20)
+                        )
+                    )
+            }
         }
     }
 
@@ -89,12 +125,18 @@ library TokenLib {
         internal
     {
         // Permit is not supported on native token
-        if (self.isNative()) revert PermitOnNativeToken();
+        assembly {
+            if iszero(self) {
+                mstore(0x00, _PERMIT_ON_NATIVE_TOKEN_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+        }
 
-        // Try to perform the permit operation
-        // slither-disable-next-line calls-loop: Disable Slither warning about the loop, cause in case of a pool with 2
+        // Perform the permit operation
+        // Disable Slither warning about the loop, cause in case of a pool with 2
         // erc20 implementing eip2612, a user can decide to use a signature approval when adding liquidity to both
         // tokens
+        // slither-disable-next-line calls-loop
         ERC20(Token.unwrap(self)).permit(owner, spender, value, deadline, v, r, s);
     }
 }
