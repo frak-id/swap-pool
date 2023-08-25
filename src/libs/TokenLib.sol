@@ -14,10 +14,11 @@ using TokenLib for Token global;
 using { unsafeEquals as == } for Token global;
 
 /// @notice Check if a token equals another
-/// @dev Mark it as unsafe since we don't have any upper byte protection
+/// @dev Mark it as unsafe since we don't have any upper byte cleaning, so address 0x00000000000011111111111111111111
+/// will not be considered equals to 0xdead0000000011111111111111111111, even if they are the same if we were to used
+/// address(...) == address(...)
 function unsafeEquals(Token self, Token other) pure returns (bool isEquals) {
     assembly {
-        // Warn, no upper byte protection here
         isEquals := eq(self, other)
     }
 }
