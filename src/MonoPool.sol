@@ -53,6 +53,10 @@ contract MonoPool is ReentrancyGuard {
     error Swap0Amount();
     error InvalidAddress();
 
+    /// @dev 'bytes4(keccak256("Swap0Amount()"))'
+    uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
+
+
     /* -------------------------------------------------------------------------- */
     /*                                   Event's                                  */
     /* -------------------------------------------------------------------------- */
@@ -98,7 +102,7 @@ contract MonoPool is ReentrancyGuard {
     /*                                 Constructor                                */
     /* -------------------------------------------------------------------------- */
 
-    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint16 _protocolFee) {
+    constructor(address token0, address token1, uint256 feeBps, address _feeReceiver, uint256 _protocolFee) payable {
         require(feeBps < BPS);
         require(_protocolFee < MAX_PROTOCOL_FEE);
         // We can only have one 0 address (representing native pool)
@@ -128,7 +132,7 @@ contract MonoPool is ReentrancyGuard {
     /// @dev The protocol can decide to stop receiving fees, by doing so he need to send the 0 address & 0 protocol fees
     /// @param _feeReceiver The new fee receiver
     /// @param _protocolFee The new fee amount per thousand
-    function updateFeeReceiver(address _feeReceiver, uint16 _protocolFee) external {
+    function updateFeeReceiver(address _feeReceiver, uint256 _protocolFee) external {
         if (feeReceiver != msg.sender) revert NotFeeReceiver();
 
         require(_protocolFee < MAX_PROTOCOL_FEE);
@@ -249,7 +253,12 @@ contract MonoPool is ReentrancyGuard {
         (delta0, delta1) = pool.swap(zeroForOne, amount, FEE_BPS);
 
         // If we got either of one to 0, revert cause of swapping 0 amount
-        if (delta0 == 0 || delta1 == 0) revert Swap0Amount();
+        assembly {
+            if or(iszero(delta0), iszero(delta1)) {
+                mstore(0x00, _SWAP_0_AMOUNT_SELECTOR)
+                revert(0x1c, 0x04)
+            }
+        }
 
         // Emit the swap event
         emit Swap(zeroForOne, amount);
@@ -261,11 +270,11 @@ contract MonoPool is ReentrancyGuard {
             if (zeroForOne && swapFee > 0) {
                 accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
-                token0State.protocolFees += swapFee;
+                token0State.protocolFees = token0State.protocolFees + swapFee;
             } else if (swapFee > 0) {
                 accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
-                token1State.protocolFees += swapFee;
+                token1State.protocolFees = token1State.protocolFees + swapFee;
             } else {
                 accounter.accountChange(delta0, delta1);
             }
