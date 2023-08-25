@@ -166,7 +166,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 op;
         while (ptr < endPtr) {
             unchecked {
-                (ptr, op) = ptr.readUint(1);
+                (ptr, op) = ptr.readUint8();
                 ptr = _interpretOp(accounter, ptr, op);
             }
         }
@@ -231,7 +231,7 @@ contract MonoPool is ReentrancyGuard {
         uint256 amount;
 
         bool zeroForOne = (op & Ops.SWAP_DIR) != 0;
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
         // If we got a swap fee, deduce it from the amount to swap
         uint256 swapFee;
@@ -287,7 +287,7 @@ contract MonoPool is ReentrancyGuard {
 
         // Get the amount
         uint256 amount;
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
         // Perform the transfer
         token.transferFromSender(address(this), amount);
@@ -310,10 +310,10 @@ contract MonoPool is ReentrancyGuard {
         address to;
         uint256 amount;
         (ptr, to) = ptr.readAddress();
-        (ptr, amount) = ptr.readUint(16);
+        (ptr, amount) = ptr.readUint128();
 
         // Register the account changes
-        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint(16)), and
+        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint128()), and
         // used in uint256 computation
         unchecked {
             accounter.accountChange(isToken0, amount.toInt256());
@@ -343,11 +343,11 @@ contract MonoPool is ReentrancyGuard {
         if (delta > 0) revert NegativeSend();
 
         // Get the limits
-        uint256 minSend = 0;
+        uint256 minSend;
         uint256 maxSend = type(uint128).max;
 
-        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minSend) = ptr.readUint(16);
-        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxSend) = ptr.readUint(16);
+        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minSend) = ptr.readUint128();
+        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxSend) = ptr.readUint128();
 
         uint256 amount = uint256(-delta);
         if (amount < minSend || amount > maxSend) revert AmountOutsideBounds();
@@ -377,11 +377,11 @@ contract MonoPool is ReentrancyGuard {
         (ptr, token, tokenState, isToken0) = _getTokenFromBoolInPtr(ptr);
 
         // Get the limits
-        uint256 minReceive = 0;
+        uint256 minReceive;
         uint256 maxReceive = type(uint128).max;
 
-        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minReceive) = ptr.readUint(16);
-        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxReceive) = ptr.readUint(16);
+        if (op & Ops.ALL_MIN_BOUND != 0) (ptr, minReceive) = ptr.readUint128();
+        if (op & Ops.ALL_MAX_BOUND != 0) (ptr, maxReceive) = ptr.readUint128();
 
         // Get the delta for the current accounting
         int256 delta = accounter.getChange(isToken0);
@@ -420,8 +420,8 @@ contract MonoPool is ReentrancyGuard {
     function _addLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         uint256 maxAmount0;
         uint256 maxAmount1;
-        (ptr, maxAmount0) = ptr.readUint(16);
-        (ptr, maxAmount1) = ptr.readUint(16);
+        (ptr, maxAmount0) = ptr.readUint128();
+        (ptr, maxAmount1) = ptr.readUint128();
 
         // Add the liquidity to the pool
         (int256 delta0, int256 delta1) = pool.addLiquidity(msg.sender, maxAmount0, maxAmount1);
@@ -438,7 +438,7 @@ contract MonoPool is ReentrancyGuard {
     /// @notice Perform the remove liquidity operation
     function _removeLiquidity(Accounter memory accounter, uint256 ptr) internal returns (uint256) {
         uint256 liq;
-        (ptr, liq) = ptr.readFullUint();
+        (ptr, liq) = ptr.readUint256();
 
         // Remove the liquidity from the pool
         (int256 delta0, int256 delta1) = pool.removeLiquidity(msg.sender, liq);
@@ -489,11 +489,11 @@ contract MonoPool is ReentrancyGuard {
         bytes32 s;
 
         (ptr, token, tokenState,) = _getTokenFromBoolInPtr(ptr);
-        (ptr, amount) = ptr.readUint(16);
-        (ptr, deadline) = ptr.readUint(6);
-        (ptr, v) = ptr.readUint(1);
-        (ptr, r) = ptr.readFullBytes();
-        (ptr, s) = ptr.readFullBytes();
+        (ptr, amount) = ptr.readUint128();
+        (ptr, deadline) = ptr.readUint48();
+        (ptr, v) = ptr.readUint8();
+        (ptr, r) = ptr.readBytes32();
+        (ptr, s) = ptr.readBytes32();
 
         // Perform the permit operation
         token.permit(msg.sender, address(this), amount, deadline, uint8(v), r, s);

@@ -8,29 +8,47 @@ pragma solidity ^0.8.0;
 library DecoderLib {
     /// @dev Reads an address from an encoded program: `self`
     function readAddress(uint256 self) internal pure returns (uint256 newPtr, address addr) {
-        uint256 rawVal;
-        (newPtr, rawVal) = readUint(self, 20);
-        addr = address(uint160(rawVal));
+        assembly ("memory-safe") {
+            newPtr := add(self, 20)
+            addr := shr(96, calldataload(self))
+        }
     }
 
     /// @dev Reads a boolean from an encoded program: `self`
+    /// @dev Warning, the output boolean will be false if 0, or true if > 1 (encoded on 0xF)
     function readBool(uint256 self) internal pure returns (uint256 newPtr, bool boolean) {
-        uint256 rawVal;
-        (newPtr, rawVal) = readUint(self, 1);
-        boolean = rawVal == 1;
+        assembly ("memory-safe") {
+            newPtr := add(self, 1)
+            boolean := shr(248, calldataload(self))
+        }
     }
 
-    /// @dev Reads an uint from an encoded program, `self`, encoded on `size` bytes
-    function readUint(uint256 self, uint256 size) internal pure returns (uint256 newPtr, uint256 x) {
-        require(size >= 1 && size <= 32);
+    /// @dev Reads an uint from an encoded program, `self`, encoded on 1 bytes
+    function readUint8(uint256 self) internal pure returns (uint256 newPtr, uint256 x) {
         assembly ("memory-safe") {
-            newPtr := add(self, size)
-            x := shr(shl(3, sub(32, size)), calldataload(self))
+            newPtr := add(self, 1)
+            x := shr(248, calldataload(self))
+        }
+    }
+
+    /// @dev Reads an uint from an encoded program, `self`, encoded on 6 bytes
+    function readUint48(uint256 self) internal pure returns (uint256 newPtr, uint256 x) {
+        assembly ("memory-safe") {
+            newPtr := add(self, 6)
+            x := shr(208, calldataload(self))
+        }
+    }
+
+    /// @dev Reads an uint from an encoded program, `self`, encoded on 16 bytes
+    function readUint128(uint256 self) internal pure returns (uint256 newPtr, uint256 x) {
+        assembly ("memory-safe") {
+            newPtr := add(self, 16)
+            x := shr(128, calldataload(self))
         }
     }
 
     /// @dev Reads an uint from an encoded program, `self`, encoded on 32 bytes
-    function readFullUint(uint256 self) internal pure returns (uint256 newPtr, uint256 x) {
+    function readUint256(uint256 self) internal pure returns (uint256 newPtr, uint256 x) {
         assembly ("memory-safe") {
             newPtr := add(self, 32)
             x := calldataload(self)
@@ -38,7 +56,7 @@ library DecoderLib {
     }
 
     /// @dev Reads a bytes from an encoded program: `self`, encoded on 32 bytes
-    function readFullBytes(uint256 self) internal pure returns (uint256 newPtr, bytes32 x) {
+    function readBytes32(uint256 self) internal pure returns (uint256 newPtr, bytes32 x) {
         assembly ("memory-safe") {
             newPtr := add(self, 32)
             x := calldataload(self)
