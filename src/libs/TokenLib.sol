@@ -74,7 +74,8 @@ library TokenLib {
             }
             default {
                 // Otherwise, get balance from the token
-                // from: https://github.com/Vectorized/solady/blob/9ea395bd66b796c7f08afd18a565eea021c98127/src/utils/SafeTransferLib.sol#L366
+                // from:
+                // https://github.com/Vectorized/solady/blob/9ea395bd66b796c7f08afd18a565eea021c98127/src/utils/SafeTransferLib.sol#L366
                 mstore(0x14, address()) // Store the `account` argument.
                 mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
                 amount :=
@@ -99,7 +100,8 @@ library TokenLib {
             }
             default {
                 // Otherwise, get balance from the token
-                // From: https://github.com/Vectorized/solady/blob/9ea395bd66b796c7f08afd18a565eea021c98127/src/utils/SafeTransferLib.sol#L366
+                // From:
+                // https://github.com/Vectorized/solady/blob/9ea395bd66b796c7f08afd18a565eea021c98127/src/utils/SafeTransferLib.sol#L366
                 mstore(0x14, owner) // Store the `account` argument.
                 mstore(0x00, 0x70a08231000000000000000000000000) // `balanceOf(address)`.
                 amount :=

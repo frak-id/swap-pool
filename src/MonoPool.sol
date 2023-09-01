@@ -42,13 +42,12 @@ contract MonoPool is ReentrancyGuard {
 
     error InvalidOp(uint256 op);
     error LeftOverDelta();
-    error InvalidGive();
+    error DeadlineExpired();
     error NegativeSend();
     error NegativeReceive();
     error AmountOutsideBounds();
     error NotFeeReceiver();
     error Swap0Amount();
-    error InvalidAddress();
 
     /// @dev 'bytes4(keccak256("Swap0Amount()"))'
     uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
@@ -230,6 +229,13 @@ contract MonoPool is ReentrancyGuard {
 
         bool zeroForOne = (op & Ops.SWAP_DIR) != 0;
         (ptr, amount) = ptr.readUint128();
+
+        // If we got a deadline, ensure we didn't go through it
+        if ((op & Ops.SWAP_DEADLINE) != 0) {
+            uint256 deadline;
+            (ptr, deadline) = ptr.readUint48();
+            if (deadline < block.timestamp) revert DeadlineExpired();
+        }
 
         // If we got a swap fee, deduce it from the amount to swap
         uint256 swapFee;

@@ -61,6 +61,39 @@ library EncoderLib {
         return self;
     }
 
+    /**
+     * @notice Appends a swap operations in the pool with 'token' for 'amount' and 'zeroForOne' direction, and a
+     * `deadline`
+     * @param self The encoded operations
+     * @param zeroForOne The direction of the swap
+     * @param amount The amount to swap
+     * @param deadline The deadline for the swap, in case it was for too long in the mempool
+     * @return program The updated encoded operations
+     */
+    function appendSwapWithDeadline(
+        bytes memory self,
+        bool zeroForOne,
+        uint256 amount,
+        uint256 deadline
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        uint256 op = Ops.SWAP | Ops.SWAP_DEADLINE | (zeroForOne ? Ops.SWAP_DIR : 0);
+        assembly {
+            let length := mload(self)
+            mstore(self, add(length, 23))
+            let initialOffset := add(add(self, 0x20), length)
+
+            mstore(initialOffset, shl(248, op))
+            mstore(add(initialOffset, 1), shl(128, amount))
+            mstore(add(initialOffset, 17), shl(208, deadline)) // uint48 -> bytes6
+        }
+
+        return self;
+    }
+
     /* -------------------------------------------------------------------------- */
     /*                            Liquidity related Ops                           */
     /* -------------------------------------------------------------------------- */
