@@ -13,9 +13,6 @@ import { Ops } from "./Ops.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
 
-// Unit for the protocol fees base (divider for the value)
-uint256 constant PROTOCOL_FEES = 10_000;
-
 /// @title MonoPool
 /// @notice Same as the original MegaTokenPool, but with a single ERC_20 base token (useful for project that want a pool
 /// for their internal swap)
@@ -168,10 +165,8 @@ contract MonoPool is ReentrancyGuard {
         // Interpret each operations
         uint256 op;
         while (ptr < endPtr) {
-            unchecked {
-                (ptr, op) = ptr.readUint8();
-                ptr = _interpretOp(accounter, ptr, op);
-            }
+            (ptr, op) = ptr.readUint8();
+            ptr = _interpretOp(accounter, ptr, op);
         }
 
         // If there are any leftover deltas, revert
@@ -239,7 +234,7 @@ contract MonoPool is ReentrancyGuard {
         // If we got a swap fee, deduce it from the amount to swap
         uint256 swapFee;
         unchecked {
-            swapFee = (amount * protocolFee) / PROTOCOL_FEES;
+            swapFee = (amount * protocolFee) / BPS;
             // Decrease the amount of the fees we will take
             amount = amount - swapFee;
         }
@@ -612,7 +607,7 @@ contract MonoPool is ReentrancyGuard {
         lpFee = inAmount * FEE_BPS / BPS;
 
         // Deduce the swap fee from the protocol
-        feeAmount = (inAmount * protocolFee) / PROTOCOL_FEES;
+        feeAmount = (inAmount * protocolFee) / BPS;
         inAmount -= feeAmount;
 
         // Get our pour reservices

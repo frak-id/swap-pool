@@ -43,8 +43,4 @@ library Ops {
     uint256 internal constant ALL_MIN_BOUND = 0x01;
     /// @dev The maximum amount of token for the `ALL` operations (0010)
     uint256 internal constant ALL_MAX_BOUND = 0x02;
-
-    /// @dev The mask used to handle native token (wrap or unwrap, apply to all 'SEND' & 'RECEIVE' op's (even the 'ALL'
-    /// ones)) (0100)
-    uint256 internal constant NATIVE_TOKEN = 0x04;
 }
