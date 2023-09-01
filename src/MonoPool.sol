@@ -266,11 +266,11 @@ contract MonoPool is ReentrancyGuard {
         // We can perform all of this stuff in an uncheck block since all the value has been checked before
         // If he swap fee cause an overflow, it would be triggered before with the swap amount directly
         unchecked {
-            if (zeroForOne && swapFee > 0) {
+            if (zeroForOne && swapFee != 0) {
                 accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
                 token0State.protocolFees = token0State.protocolFees + swapFee;
-            } else if (swapFee > 0) {
+            } else if (swapFee != 0) {
                 accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
                 token1State.protocolFees = token1State.protocolFees + swapFee;
@@ -301,7 +301,7 @@ contract MonoPool is ReentrancyGuard {
         token.transferFromSender(address(this), amount);
 
         // Mark the reception state
-        _accountReceived(accounter, tokenState, token);
+        _accountReceived(accounter, tokenState, token, amount);
 
         return ptr;
     }
@@ -403,16 +403,32 @@ contract MonoPool is ReentrancyGuard {
         token.transferFromSender(address(this), amount);
 
         // Mark the reception state
-        _accountReceived(accounter, tokenState, token);
+        _accountReceived(accounter, tokenState, token, amount);
 
         return ptr;
     }
 
     /// @dev Function called after we received token from an account, update our total reserve and the account changes
-    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, Token token) internal {
+    function _accountReceived(
+        Accounter memory accounter,
+        TokenState storage tokenState,
+        Token token,
+        uint256 targetAmount
+    )
+        internal
+    {
         uint256 reserves = tokenState.totalReserves;
         uint256 directBalance = token.selfBalance();
         uint256 totalReceived = directBalance - reserves;
+
+        // If we got more than the target amount, add the overflow as protocol fees
+        if (totalReceived > targetAmount) {
+            unchecked {
+                uint256 overflow = totalReceived - targetAmount;
+                tokenState.protocolFees += overflow;
+                totalReceived = targetAmount;
+            }
+        }
 
         // Register the change for either token 0 or 1 (based on the equality check)
         accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
@@ -470,11 +486,11 @@ contract MonoPool is ReentrancyGuard {
         uint256 protocolFees1 = token1State.protocolFees;
 
         // Update the state only if he got something to claim
-        if (protocolFees0 > 0) {
+        if (protocolFees0 != 0) {
             accounter.accountChange(true, -(protocolFees0.toInt256()));
             token0State.protocolFees = 0;
         }
-        if (protocolFees1 > 0) {
+        if (protocolFees1 != 0) {
             accounter.accountChange(false, -(protocolFees1.toInt256()));
             token1State.protocolFees = 0;
         }

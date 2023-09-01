@@ -76,6 +76,22 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     }
 
     /// @dev Test swapping token 0 to token 1 with direct receive
+    function test_swap0to1_ForceFeed_ok() public swap0to1Context {
+        // Force feed a few token to the pool
+        token0.mint(address(pool), 1 ether);
+
+        // Build the swap op
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
+
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1();
+    }
+
+    /// @dev Test swapping token 0 to token 1 with direct receive
     function test_swap0to1_ReceiveAll_SendAllLimits_ok() public swap0to1Context {
         vm.pauseGasMetering();
         (uint256 estimateOutput,,) = pool.estimateSwap(swapAmount, true);
