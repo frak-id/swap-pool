@@ -35,8 +35,8 @@ contract MonoPool is ReentrancyGuard {
 
     /// @dev The token state to handle reserves & protocol fees
     struct TokenState {
-        uint256 totalReserves;
-        uint256 protocolFees;
+        uint128 totalReserves;
+        uint128 protocolFees;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -269,11 +269,11 @@ contract MonoPool is ReentrancyGuard {
             if (zeroForOne && swapFee != 0) {
                 accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
-                token0State.protocolFees = token0State.protocolFees + swapFee;
+                token0State.protocolFees = token0State.protocolFees + swapFee.toUint128();
             } else if (swapFee != 0) {
                 accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
-                token1State.protocolFees = token1State.protocolFees + swapFee;
+                token1State.protocolFees = token1State.protocolFees + swapFee.toUint128();
             } else {
                 accounter.accountChange(delta0, delta1);
             }
@@ -325,7 +325,7 @@ contract MonoPool is ReentrancyGuard {
         // used in uint256 computation
         unchecked {
             accounter.accountChange(isToken0, amount.toInt256());
-            tokenState.totalReserves -= amount;
+            tokenState.totalReserves -= amount.toUint128();
         }
 
         // Simply transfer the tokens
@@ -367,7 +367,7 @@ contract MonoPool is ReentrancyGuard {
         // Decrease the total reserve
         // Can be done in an unchecked block since the amount will be checked on transfer below
         unchecked {
-            tokenState.totalReserves -= amount;
+            tokenState.totalReserves -= amount.toUint128();
         }
 
         // Simply transfer the tokens
@@ -425,7 +425,7 @@ contract MonoPool is ReentrancyGuard {
         if (totalReceived > targetAmount) {
             unchecked {
                 uint256 overflow = totalReceived - targetAmount;
-                tokenState.protocolFees += overflow;
+                tokenState.protocolFees += overflow.toUint128();
                 totalReceived = targetAmount;
             }
         }
@@ -433,7 +433,7 @@ contract MonoPool is ReentrancyGuard {
         // Register the change for either token 0 or 1 (based on the equality check)
         accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
         // Increase the total reservices for this token state
-        tokenState.totalReserves = directBalance;
+        tokenState.totalReserves = directBalance.toUint128();
     }
 
     /* -------------------------------------------------------------------------- */
