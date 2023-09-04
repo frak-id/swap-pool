@@ -322,12 +322,8 @@ contract MonoPool is ReentrancyGuard {
         (ptr, amount) = ptr.readUint128();
 
         // Register the account changes
-        // We can perform all of this stuff in an uncheck block since the value came from a uint128 (readUint128()), and
-        // used in uint256 computation
-        unchecked {
-            accounter.accountChange(isToken0, amount.toInt256());
-            tokenState.totalReserves -= amount.toUint128();
-        }
+        accounter.accountChange(isToken0, amount.toInt256());
+        tokenState.totalReserves = tokenState.totalReserves - amount.toUint128();
 
         // Simply transfer the tokens
         token.transfer(to, amount);
@@ -366,10 +362,7 @@ contract MonoPool is ReentrancyGuard {
         (ptr, to) = ptr.readAddress();
 
         // Decrease the total reserve
-        // Can be done in an unchecked block since the amount will be checked on transfer below
-        unchecked {
-            tokenState.totalReserves -= amount.toUint128();
-        }
+        tokenState.totalReserves = tokenState.totalReserves - amount.toUint128();
 
         // Simply transfer the tokens
         token.transfer(to, amount);
@@ -418,17 +411,14 @@ contract MonoPool is ReentrancyGuard {
     )
         internal
     {
-        uint256 reserves = tokenState.totalReserves;
         uint256 directBalance = token.selfBalance();
-        uint256 totalReceived = directBalance - reserves;
+        uint256 totalReceived = directBalance - tokenState.totalReserves;
 
         // If we got more than the target amount, add the overflow as protocol fees
         if (totalReceived > targetAmount) {
-            unchecked {
-                uint256 overflow = totalReceived - targetAmount;
-                tokenState.protocolFees += overflow.toUint128();
-                totalReceived = targetAmount;
-            }
+            uint256 overflow = totalReceived - targetAmount;
+            tokenState.protocolFees += overflow.toUint128();
+            totalReceived = targetAmount;
         }
 
         // Register the change for either token 0 or 1 (based on the equality check)
