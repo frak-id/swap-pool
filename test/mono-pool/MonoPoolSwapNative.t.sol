@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/console.sol";
 import { EncoderLib } from "src/encoder/EncoderLib.sol";
 import { MonoPool } from "src/MonoPool.sol";
+import { TokenLib } from "src/libs/TokenLib.sol";
 import { MockERC20 } from "test/mock/MockERC20.sol";
 import { BaseMonoPoolTest } from "./BaseMonoPoolTest.sol";
 import { SafeTransferLib } from "solady/utils/SafeTransferLib.sol";
@@ -84,7 +85,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
     }
 
     /// @dev Test swapping token 1 to token 0
-    function test_swap1to0_ko_InsuficiantFunds() public withNativeLiquidity(100 ether, 100 ether) {
+    function test_swap1to0_ko_InvalidTransferAmount_TooLow() public withNativeLiquidity(100 ether, 100 ether) {
         uint256 amount = 0.1 ether;
 
         // Mint token & approve transfer
@@ -99,7 +100,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
             .done();
 
         // Send it
-        vm.expectRevert(MonoPool.LeftOverDelta.selector);
+        vm.expectRevert(TokenLib.InvalidNativeTransferAmount.selector);
         vm.prank(swapUser);
         pool.execute{ value: amount - 1 }(program);
 
@@ -108,7 +109,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
     }
 
     /// @dev Test swapping token 1 to token 0
-    function test_swap1to0_ok_SendingMoreToken() public withNativeLiquidity(100 ether, 100 ether) {
+    function test_swap1to0_ko_InvalidTransferAmount_TooHigh() public withNativeLiquidity(100 ether, 100 ether) {
         uint256 amount = 0.1 ether;
 
         // Mint token & approve transfer
@@ -123,6 +124,7 @@ contract MonoPoolSwapNativeTest is BaseMonoPoolTest {
             .done();
 
         // Send it
+        vm.expectRevert(TokenLib.InvalidNativeTransferAmount.selector);
         vm.prank(swapUser);
         pool.execute{ value: amount + 1 }(program);
     }

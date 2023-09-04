@@ -34,6 +34,9 @@ library TokenLib {
     /// @dev Error throwned when the token is the native token and we try to perform a permit operation
     error PermitOnNativeToken();
 
+    /// @dev Error throwned when the token is the native token and the transfer amount doesn't match the receive value
+    error InvalidNativeTransferAmount();
+
     /// @dev 'bytes4(keccak256("PermitOnNativeToken()"))'
     uint256 private constant _PERMIT_ON_NATIVE_TOKEN_SELECTOR = 0x5d478b89;
 
@@ -57,8 +60,13 @@ library TokenLib {
 
     /// @notice Transfer `amount` of `token` to `to` from `msg.sender`.
     function transferFromSender(Token self, address to, uint256 amount) internal {
-        // If we are in the case of a native token, nothing to do
-        if (self.isNative()) return;
+        // In the case of a native token, no transfer from is possible, so whe just check the sent amount
+        if (self.isNative()) {
+            // Check if the amount is the same as the receive value
+            if (amount != msg.value) revert TokenLib.InvalidNativeTransferAmount();
+            // Just return if we are here, all good
+            return;
+        }
 
         // Try to perform the transfer
         Token.unwrap(self).safeTransferFrom(msg.sender, to, amount);
