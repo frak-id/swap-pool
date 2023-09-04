@@ -22,9 +22,9 @@ library AccounterLib {
             self.token1Change = self.token1Change + change;
         }
     }
+
     /// @notice Register the changes for both token, respectively `token0Change` and `token1Change` for the current
     /// sender, on the current accounting: `self`.
-
     function accountChange(Accounter memory self, int256 token0Change, int256 token1Change) internal pure {
         self.token0Change = self.token0Change + token0Change;
         self.token1Change = self.token1Change + token1Change;

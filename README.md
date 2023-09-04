@@ -101,7 +101,10 @@ The `Ops` library delineates all the operations permissible by the swap contract
   - **Direction Flag**: 
     - Extracts the direction of the operation.
     - `SWAP_DIR = 0x01`
-    
+  - **Deadline Flag**: 
+    - Add a deadline to the swap operation.
+    - `SWAP_DEADLINE = 0x02`
+
 - **SEND_ALL Operation**: Allows the pool to send all tokens to the user.
   - **Operation Code**: `SEND_ALL = 0x10`
 

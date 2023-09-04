@@ -12,8 +12,11 @@ library Ops {
     /// @dev The Ops for the swap operation
     uint256 internal constant SWAP = 0x00;
 
-    /// @dev The mask used to extract the operation direction
+    /// @dev The mask used to extract the operation direction (0001)
     uint256 internal constant SWAP_DIR = 0x01;
+
+    /// @dev Tell if we need to have a deadline to our `SWAP` operation (0010)
+    uint256 internal constant SWAP_DEADLINE = 0x02;
 
     /// @dev The Ops for the send all token operation (from pool to user)
     uint256 internal constant SEND_ALL = 0x10;
@@ -43,8 +46,4 @@ library Ops {
     uint256 internal constant ALL_MIN_BOUND = 0x01;
     /// @dev The maximum amount of token for the `ALL` operations (0010)
     uint256 internal constant ALL_MAX_BOUND = 0x02;
-
-    /// @dev The mask used to handle native token (wrap or unwrap, apply to all 'SEND' & 'RECEIVE' op's (even the 'ALL'
-    /// ones)) (0100)
-    uint256 internal constant NATIVE_TOKEN = 0x04;
 }

@@ -43,6 +43,21 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
     }
 
     /// @dev Test swapping token 0 to token 1 with send and receive all
+    function test_swap0to1_ko_SwapDeadlineExpired() public swap0to1Context {
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwapWithDeadline(true, swapAmount, uint48(block.timestamp - 1))
+            .appendReceiveAll(true)
+            .appendSendAll(false, swapUser)
+            .done();
+
+        vm.expectRevert(MonoPool.DeadlineExpired.selector);
+        vm.prank(swapUser);
+        pool.execute(program);
+    }
+
+    /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ko_0SwapOutput() public swap0to1Context {
         // Build the swap op
         bytes memory program = _buildSwapViaAll(true, 1, swapUser);
@@ -64,6 +79,22 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
 
     /// @dev Test swapping token 0 to token 1 with send and receive all
     function test_swap0to1_ReceiveAll_SendAll_ok() public swap0to1Context {
+        // Build the swap op
+        bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
+
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1();
+    }
+
+    /// @dev Test swapping token 0 to token 1 with direct receive
+    function test_swap0to1_ForceFeed_ok() public swap0to1Context {
+        // Force feed a few token to the pool
+        token0.mint(address(pool), 1 ether);
+
         // Build the swap op
         bytes memory program = _buildSwapViaAll(true, swapAmount, swapUser);
 
@@ -111,6 +142,24 @@ contract MonoPoolSwapTest is BaseMonoPoolTest {
         (uint256 swapOutput,,) = pool.estimateSwap(swapAmount, true);
         // Build the swap op
         bytes memory program = _buildSwapViaDirectReceiveAndSend(true, swapAmount, swapOutput, swapUser);
+
+        vm.prank(swapUser);
+        pool.execute(program);
+
+        // Assert the pool are synced
+        _assertReserveSynced(pool);
+        _assertBalancePost0to1();
+    }
+
+    /// @dev Test swapping token 0 to token 1 with send and receive all
+    function test_swap0to1_SwapDeadline_ok() public swap0to1Context {
+        // Build the swap op
+        // forgefmt: disable-next-item
+        bytes memory program = EncoderLib.init()
+            .appendSwapWithDeadline(true, swapAmount, uint48(block.timestamp))
+            .appendReceiveAll(true)
+            .appendSendAll(false, swapUser)
+            .done();
 
         vm.prank(swapUser);
         pool.execute(program);

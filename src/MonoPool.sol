@@ -13,9 +13,6 @@ import { Ops } from "./Ops.sol";
 import { ReentrancyGuard } from "./utils/ReentrancyGuard.sol";
 import { DecoderLib } from "./encoder/DecoderLib.sol";
 
-// Unit for the protocol fees base (divider for the value)
-uint256 constant PROTOCOL_FEES = 10_000;
-
 /// @title MonoPool
 /// @notice Same as the original MegaTokenPool, but with a single ERC_20 base token (useful for project that want a pool
 /// for their internal swap)
@@ -35,8 +32,8 @@ contract MonoPool is ReentrancyGuard {
 
     /// @dev The token state to handle reserves & protocol fees
     struct TokenState {
-        uint256 totalReserves;
-        uint256 protocolFees;
+        uint128 totalReserves;
+        uint128 protocolFees;
     }
 
     /* -------------------------------------------------------------------------- */
@@ -45,13 +42,12 @@ contract MonoPool is ReentrancyGuard {
 
     error InvalidOp(uint256 op);
     error LeftOverDelta();
-    error InvalidGive();
+    error DeadlineExpired();
     error NegativeSend();
     error NegativeReceive();
     error AmountOutsideBounds();
     error NotFeeReceiver();
     error Swap0Amount();
-    error InvalidAddress();
 
     /// @dev 'bytes4(keccak256("Swap0Amount()"))'
     uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
@@ -168,10 +164,8 @@ contract MonoPool is ReentrancyGuard {
         // Interpret each operations
         uint256 op;
         while (ptr < endPtr) {
-            unchecked {
-                (ptr, op) = ptr.readUint8();
-                ptr = _interpretOp(accounter, ptr, op);
-            }
+            (ptr, op) = ptr.readUint8();
+            ptr = _interpretOp(accounter, ptr, op);
         }
 
         // If there are any leftover deltas, revert
@@ -236,10 +230,17 @@ contract MonoPool is ReentrancyGuard {
         bool zeroForOne = (op & Ops.SWAP_DIR) != 0;
         (ptr, amount) = ptr.readUint128();
 
+        // If we got a deadline, ensure we didn't go through it
+        if ((op & Ops.SWAP_DEADLINE) != 0) {
+            uint256 deadline;
+            (ptr, deadline) = ptr.readUint48();
+            if (deadline < block.timestamp) revert DeadlineExpired();
+        }
+
         // If we got a swap fee, deduce it from the amount to swap
         uint256 swapFee;
         unchecked {
-            swapFee = (amount * protocolFee) / PROTOCOL_FEES;
+            swapFee = (amount * protocolFee) / BPS;
             // Decrease the amount of the fees we will take
             amount = amount - swapFee;
         }
@@ -266,14 +267,14 @@ contract MonoPool is ReentrancyGuard {
         // We can perform all of this stuff in an uncheck block since all the value has been checked before
         // If he swap fee cause an overflow, it would be triggered before with the swap amount directly
         unchecked {
-            if (zeroForOne && swapFee > 0) {
+            if (zeroForOne && swapFee != 0) {
                 accounter.accountChange(delta0 + swapFee.toInt256(), delta1);
                 // Save protocol fee
-                token0State.protocolFees = token0State.protocolFees + swapFee;
-            } else if (swapFee > 0) {
+                token0State.protocolFees = token0State.protocolFees + swapFee.toUint128();
+            } else if (swapFee != 0) {
                 accounter.accountChange(delta0, delta1 + swapFee.toInt256());
                 // Save protocol fee
-                token1State.protocolFees = token1State.protocolFees + swapFee;
+                token1State.protocolFees = token1State.protocolFees + swapFee.toUint128();
             } else {
                 accounter.accountChange(delta0, delta1);
             }
@@ -301,7 +302,7 @@ contract MonoPool is ReentrancyGuard {
         token.transferFromSender(address(this), amount);
 
         // Mark the reception state
-        _accountReceived(accounter, tokenState, token);
+        _accountReceived(accounter, tokenState, token, amount);
 
         return ptr;
     }
@@ -325,7 +326,7 @@ contract MonoPool is ReentrancyGuard {
         // used in uint256 computation
         unchecked {
             accounter.accountChange(isToken0, amount.toInt256());
-            tokenState.totalReserves -= amount;
+            tokenState.totalReserves -= amount.toUint128();
         }
 
         // Simply transfer the tokens
@@ -367,7 +368,7 @@ contract MonoPool is ReentrancyGuard {
         // Decrease the total reserve
         // Can be done in an unchecked block since the amount will be checked on transfer below
         unchecked {
-            tokenState.totalReserves -= amount;
+            tokenState.totalReserves -= amount.toUint128();
         }
 
         // Simply transfer the tokens
@@ -403,21 +404,37 @@ contract MonoPool is ReentrancyGuard {
         token.transferFromSender(address(this), amount);
 
         // Mark the reception state
-        _accountReceived(accounter, tokenState, token);
+        _accountReceived(accounter, tokenState, token, amount);
 
         return ptr;
     }
 
     /// @dev Function called after we received token from an account, update our total reserve and the account changes
-    function _accountReceived(Accounter memory accounter, TokenState storage tokenState, Token token) internal {
+    function _accountReceived(
+        Accounter memory accounter,
+        TokenState storage tokenState,
+        Token token,
+        uint256 targetAmount
+    )
+        internal
+    {
         uint256 reserves = tokenState.totalReserves;
         uint256 directBalance = token.selfBalance();
         uint256 totalReceived = directBalance - reserves;
 
+        // If we got more than the target amount, add the overflow as protocol fees
+        if (totalReceived > targetAmount) {
+            unchecked {
+                uint256 overflow = totalReceived - targetAmount;
+                tokenState.protocolFees += overflow.toUint128();
+                totalReceived = targetAmount;
+            }
+        }
+
         // Register the change for either token 0 or 1 (based on the equality check)
         accounter.accountChange(token == TOKEN_0, -totalReceived.toInt256());
         // Increase the total reservices for this token state
-        tokenState.totalReserves = directBalance;
+        tokenState.totalReserves = directBalance.toUint128();
     }
 
     /* -------------------------------------------------------------------------- */
@@ -470,11 +487,11 @@ contract MonoPool is ReentrancyGuard {
         uint256 protocolFees1 = token1State.protocolFees;
 
         // Update the state only if he got something to claim
-        if (protocolFees0 > 0) {
+        if (protocolFees0 != 0) {
             accounter.accountChange(true, -(protocolFees0.toInt256()));
             token0State.protocolFees = 0;
         }
-        if (protocolFees1 > 0) {
+        if (protocolFees1 != 0) {
             accounter.accountChange(false, -(protocolFees1.toInt256()));
             token1State.protocolFees = 0;
         }
@@ -596,7 +613,7 @@ contract MonoPool is ReentrancyGuard {
         lpFee = inAmount * FEE_BPS / BPS;
 
         // Deduce the swap fee from the protocol
-        feeAmount = (inAmount * protocolFee) / PROTOCOL_FEES;
+        feeAmount = (inAmount * protocolFee) / BPS;
         inAmount -= feeAmount;
 
         // Get our pour reservices
