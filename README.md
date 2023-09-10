@@ -213,6 +213,12 @@ For transparency and trust, each security audit conducted on our contracts is me
      ALL
    - [View Audit Report](audits/Mlome-20-08-2023.md)
 
+3. **Audit by [Beirao](https://twitter.com/0xBeirao) - 05/09/2023**
+   - **Context**: Global security audit of the project.
+   - **Files Covered**:
+     ALL
+   - [View Audit Report](audits/Beirao-05-09-2023.md)
+
 ## Credits & Acknowledgments 👏
 
 We owe a debt of gratitude to the foundational work done by [Philogy](https://github.com/Philogy/singleton-swapper). Our implementation, while unique, has been greatly inspired by or derives from their stellar work on the singleton-swapper repository.
