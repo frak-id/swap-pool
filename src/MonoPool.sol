@@ -24,7 +24,7 @@ contract MonoPool is ReentrancyGuard {
     using DecoderLib for uint256;
 
     /* -------------------------------------------------------------------------- */
-    /*                                 Constant's                                 */
+    /*                                 Constants                                  */
     /* -------------------------------------------------------------------------- */
 
     /// @dev The max swap fee (5%)
@@ -37,7 +37,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                               Custom error's                               */
+    /*                               Custom errors                                */
     /* -------------------------------------------------------------------------- */
 
     error InvalidOp(uint256 op);
@@ -53,7 +53,7 @@ contract MonoPool is ReentrancyGuard {
     uint256 private constant _SWAP_0_AMOUNT_SELECTOR = 0x5509f2e4;
 
     /* -------------------------------------------------------------------------- */
-    /*                                   Event's                                  */
+    /*                                   Events                                   */
     /* -------------------------------------------------------------------------- */
 
     /// @dev Event emitted after a swap
@@ -119,7 +119,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                           External write method's                          */
+    /*                           External write methods                           */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Update the fee receiver and the fee amount
@@ -173,7 +173,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                           Internal write method's                          */
+    /*                           Internal write methods                           */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Interpret an `op` from a programm encoded in a `ptr`, saving accounting changes in the `accounter`
@@ -284,7 +284,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                        Token sending / pulling op's                        */
+    /*                        Token sending / pulling ops                         */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the receive operation
@@ -332,7 +332,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                      Token sending / pulling ALL op's                      */
+    /*                      Token sending / pulling ALL ops                       */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the send all operation
@@ -428,7 +428,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                           Liquidity specific op's                          */
+    /*                           Liquidity specific ops                           */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the add liquidity operation
@@ -490,7 +490,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                              Token helper op's                             */
+    /*                              Token helper ops                              */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Perform the permit operation
@@ -517,7 +517,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                        Internal pure helper method's                       */
+    /*                        Internal pure helper methods                        */
     /* -------------------------------------------------------------------------- */
 
     function _getPc(bytes calldata program) internal pure returns (uint256 ptr, uint256 endPtr) {
@@ -546,7 +546,7 @@ contract MonoPool is ReentrancyGuard {
     }
 
     /* -------------------------------------------------------------------------- */
-    /*                           External view method's                           */
+    /*                           External view methods                            */
     /* -------------------------------------------------------------------------- */
 
     /// @notice Get the current tokens
